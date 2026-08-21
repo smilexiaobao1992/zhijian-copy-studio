@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { EditorApp } from '../features/editor/EditorApp';
+---
+
+<BaseLayout
+  title="编辑器 · 纸间排版"
+  description="输入 Markdown，实时生成适合小红书发布的纯文本排版。"
+  bodyClass="studio-page"
+>
+  <EditorApp client:only="react">
+    <div slot="fallback" style="min-height:100vh;display:grid;place-items:center;color:var(--color-muted)">
+      正在打开本地编辑器…
+    </div>
+  </EditorApp>
+</BaseLayout>

@@ -1,0 +1,108 @@
+:root {
+  color-scheme: light;
+  --color-canvas: oklch(0.958 0.012 82);
+  --color-rail: oklch(0.925 0.016 78);
+  --color-paper: oklch(0.991 0.005 85);
+  --color-paper-deep: oklch(0.975 0.008 82);
+  --color-ink: oklch(0.245 0.018 58);
+  --color-muted: oklch(0.49 0.018 65);
+  --color-faint: oklch(0.64 0.014 70);
+  --color-line: oklch(0.855 0.018 76);
+  --color-accent: oklch(0.61 0.172 29);
+  --color-accent-dark: oklch(0.53 0.165 29);
+  --color-success: oklch(0.52 0.105 145);
+  --color-warning: oklch(0.62 0.12 72);
+  --font-display: "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+  --font-body: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Code", "Menlo", monospace;
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-3: 14px;
+  --radius-pill: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --shadow-sheet: 0 16px 36px oklch(0.31 0.02 65 / 0.08), 0 2px 8px oklch(0.31 0.02 65 / 0.08);
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: clip;
+}
+
+body {
+  background: var(--color-canvas);
+}
+
+button,
+textarea,
+select,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+button {
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid oklch(0.72 0.14 36 / 0.48);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: var(--space-3);
+  left: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-2);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  transform: translateY(-160%);
+  transition: transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

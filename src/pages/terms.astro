@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import styles from '../styles/content-page.module.css';
+---
+
+<BaseLayout title="使用说明 · 纸间排版" description="纸间排版的使用边界和开源许可说明。">
+  <header class={styles.simpleHeader}><a href="/">纸间排版</a><a href="/studio/">打开编辑器</a></header>
+  <main class={styles.contentPage} id="main-content">
+    <span class={styles.errorCode}>USAGE / OPEN SOURCE</span>
+    <h1>它负责排版，不替你判断内容。</h1>
+    <p class={styles.intro}>纸间排版输出普通文本。发布前仍需由使用者检查内容准确性、平台规则、话题和最终粘贴效果。</p>
+    <section><h2>不自动发布</h2><p>当前版本不会登录或操作小红书账号，也不会代替使用者提交内容。</p></section>
+    <section><h2>主题不是平台样式</h2><p>主题使用 Unicode、Emoji、标点和换行建立层级，不代表平台支持真正的字体、颜色或粗体。</p></section>
+    <section><h2>开源许可</h2><p>项目代码按 MIT License 开放。产品名称、示例文案和第三方平台名称仍应按照各自适用规则使用。</p></section>
+  </main>
+</BaseLayout>

@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import styles from '../styles/content-page.module.css';
+---
+
+<BaseLayout title="隐私 · 纸间排版" description="纸间排版的本地优先隐私说明。">
+  <header class={styles.simpleHeader}><a href="/">纸间排版</a><a href="/studio/">打开编辑器</a></header>
+  <main class={styles.contentPage} id="main-content">
+    <span class={styles.errorCode}>PRIVACY / 2026-08-21</span>
+    <h1>你的文案默认不会离开浏览器。</h1>
+    <p class={styles.intro}>当前版本没有账号系统、服务器存储、广告追踪或第三方分析脚本。</p>
+    <section><h2>本地草稿</h2><p>编辑器使用浏览器 localStorage 保存当前草稿和主题选择。清除浏览器站点数据会同时删除这些内容。</p></section>
+    <section><h2>剪贴板</h2><p>只有在你主动点击复制按钮时，页面才会把当前预览文本写入系统剪贴板。</p></section>
+    <section><h2>未来功能</h2><p>如果未来增加云同步或 AI 服务，会在启用前说明数据发送目的、接收方和保存方式，并保持本地模式可用。</p></section>
+  </main>
+</BaseLayout>

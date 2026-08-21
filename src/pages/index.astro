@@ -1,0 +1,189 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import styles from '../styles/landing.module.css';
+
+const applicationSchema = {
+  '@type': 'WebApplication',
+  '@id': Astro.site ? new URL('/#application', Astro.site).href : '#application',
+  name: '纸间排版',
+  alternateName: 'Zhijian Copy Studio',
+  description: '开源、本地优先的小红书纯文本排版器，可将 Markdown 转换为适合复制发布的结构化文案。',
+  applicationCategory: 'UtilitiesApplication',
+  operatingSystem: 'Any',
+  browserRequirements: 'Requires JavaScript',
+  isAccessibleForFree: true,
+  offers: {
+    '@type': 'Offer',
+    price: 0,
+    priceCurrency: 'CNY',
+  },
+  featureList: [
+    'Markdown 文案解析',
+    '小红书纯文本排版',
+    '四套结构化主题',
+    '本地草稿保存',
+    '实时左右对照预览',
+  ],
+  url: Astro.site?.href,
+};
+---
+
+<BaseLayout
+  title="纸间排版 · 把 Markdown 变成舒服的小红书文案"
+  description="开源、本地优先的小红书纯文本排版器。输入 Markdown，切换主题，实时预览并一键复制。"
+  structuredData={applicationSchema}
+>
+  <header class={styles.header}>
+    <a class={styles.wordmark} href="/" aria-label="纸间排版首页">
+      <span aria-hidden="true">纸</span>
+      <strong>纸间排版</strong>
+    </a>
+    <nav aria-label="主导航">
+      <a href="#principles">设计原则</a>
+      <a href="#roadmap">路线</a>
+      <a class={styles.navAction} href="/studio/">打开编辑器</a>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <section class={styles.hero}>
+      <div class={styles.paperMarks} aria-hidden="true">
+        <span>01 / DRAFT</span>
+        <span>LOCAL WORKSPACE</span>
+        <span>2026</span>
+      </div>
+      <div class={styles.heroCopy}>
+        <p class={styles.kicker}>OPEN SOURCE · LOCAL FIRST</p>
+        <h1>把一份文案，排成读者愿意停下来的样子。</h1>
+        <p class={styles.lede}>输入 Markdown 或普通文案，选择适合内容气质的主题，让标题、重点、步骤和引用各归其位，复制后即可发布。</p>
+        <div class={styles.heroActions}>
+          <a class={styles.primaryAction} href="/studio/">开始排版 <span aria-hidden="true">→</span></a>
+          <span>编辑时自动保存当前草稿</span>
+        </div>
+      </div>
+
+      <div class={styles.transformDemo} aria-label="排版转换示例">
+        <span class={styles.demoIndex} aria-hidden="true">LIVE / 01</span>
+        <div class={styles.sourceSample}>
+          <header><span>原稿</span><small>MARKDOWN · 194 字</small></header>
+          <div class={styles.sourceBody} aria-hidden="true">
+            <span># AI 文案读起来太挤怎么办</span>
+            <span>直接复制 AI 输出，经常会遇到段落太密、重点不清的问题。</span>
+            <span>## 先做三件事</span>
+            <span>1. 一段只讲一个观点</span>
+            <span>2. 把操作步骤改成列表</span>
+          </div>
+        </div>
+        <div class={styles.transformMark} aria-hidden="true"><i></i><span>结构识别完成</span></div>
+        <div class={styles.outputSample}>
+          <header><span>小红书</span><small>信号主题 · 即时预览</small></header>
+          <div class={styles.outputBody}>
+            <span>▌ AI 文案读起来太挤怎么办</span>
+            <span>直接复制 AI 输出，经常会遇到段落太密、重点不清的问题。</span>
+            <span>▌ 先做三件事</span>
+            <span>❶ 一段只讲一个观点<br />❷ 把操作步骤改成列表</span>
+          </div>
+          <footer><span>3 个标题 · 2 个步骤</span><strong>适合复制发布</strong></footer>
+        </div>
+        <span class={styles.demoFolio} aria-hidden="true">P. 01</span>
+      </div>
+    </section>
+
+    <section class={styles.principles} id="principles" aria-labelledby="principles-heading">
+      <div class={styles.sectionIndex}>01 / 原则</div>
+      <div class={styles.principleLead}>
+        <h2 id="principles-heading">排版不是装饰，它是内容结构的第二次写作。</h2>
+        <div class={styles.structureDiagram} aria-hidden="true">
+          <div class={styles.rawStructure}>
+            <small>原稿</small>
+            <i></i><i></i><i></i><i></i>
+          </div>
+          <span class={styles.diagramArrow}>→</span>
+          <div class={styles.refinedStructure}>
+            <small>结构化</small>
+            <b></b><i></i><i></i><em></em>
+          </div>
+        </div>
+      </div>
+      <dl class={styles.principleList}>
+        <div><dt>原文独立</dt><dd>切换主题只改变输出，随时可以回到最初的表达。</dd></div>
+        <div><dt>左右对照</dt><dd>左侧调整内容结构，右侧同步呈现最终复制结果。</dd></div>
+        <div><dt>随时续写</dt><dd>草稿保存在当前设备，刷新页面也能继续编辑。</dd></div>
+      </dl>
+    </section>
+
+    <section class={styles.roadmap} id="roadmap" aria-labelledby="roadmap-heading">
+      <div class={styles.sectionIndex}>02 / 渠道</div>
+      <div>
+        <h2 id="roadmap-heading">同一份结构，两个输出方向。</h2>
+        <p>小红书保留平台友好的符号层级，复制后即可发布。公众号将支持字号、颜色和间距更丰富的图文排版。</p>
+        <div class={styles.channelFlow} aria-hidden="true">
+          <span class={styles.flowSource}>MD</span>
+          <i></i>
+          <div><span>TXT</span><span>HTML</span></div>
+        </div>
+      </div>
+      <div class={styles.channelLedger}>
+        <article data-status="ready">
+          <span>现在可用</span>
+          <h3>小红书</h3>
+          <p>四套主题、三个内容模板、实时预览、一键复制。</p>
+        </article>
+        <article data-status="next">
+          <span>下一阶段</span>
+          <h3>公众号</h3>
+          <p>沿用同一份文案，输出可粘贴到公众号编辑器的富文本。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class={styles.themeStrip} aria-labelledby="themes-heading">
+      <div>
+        <span class={styles.sectionIndex}>03 / 主题</span>
+        <h2 id="themes-heading">四种性格，不是四次换色。</h2>
+      </div>
+      <ul>
+        <li style="--theme-color:#C6533D">
+          <i></i><div><strong>清简</strong><span>观点和知识</span></div>
+          <div class={styles.themeGlyph} aria-hidden="true"><b>01</b><em></em><em></em><em></em></div>
+        </li>
+        <li style="--theme-color:#25666B">
+          <i></i><div><strong>信号</strong><span>AI 和数码</span></div>
+          <div class={styles.themeGlyph} aria-hidden="true"><b>▌</b><em></em><em></em><em></em></div>
+        </li>
+        <li style="--theme-color:#B67A3C">
+          <i></i><div><strong>纸间</strong><span>生活方式</span></div>
+          <div class={styles.themeGlyph} aria-hidden="true"><b>摘</b><em></em><em></em><em></em></div>
+        </li>
+        <li style="--theme-color:#4D647E">
+          <i></i><div><strong>步序</strong><span>清单和教程</span></div>
+          <div class={styles.themeGlyph} aria-hidden="true"><b>①</b><em></em><em></em><em></em></div>
+        </li>
+      </ul>
+    </section>
+
+    <section class={styles.finalCta}>
+      <div class={styles.ctaBackdrop} aria-hidden="true">
+        <div class={styles.ctaDraftSheet}><small>MARKDOWN</small><i></i><i></i><i></i><i></i></div>
+        <span>→</span>
+        <div class={styles.ctaReadySheet}><small>READY</small><b></b><i></i><i></i><i></i></div>
+      </div>
+      <div class={styles.ctaCopy}>
+        <p>从第一段开始，让重点自己站出来。</p>
+        <span>写下原文，选择主题，复制一份可以直接发布的正文。</span>
+      </div>
+      <div class={styles.ctaSequence} aria-hidden="true"><span>写</span><i></i><span>排</span><i></i><span>发</span></div>
+      <a href="/studio/">进入纸间排版 <span aria-hidden="true">→</span></a>
+    </section>
+  </main>
+
+  <footer class={styles.footer}>
+    <span>纸间排版 · Social Copy Studio</span>
+    <nav aria-label="页脚导航">
+      <a href="/privacy/">隐私</a>
+      <a href="/terms/">使用说明</a>
+      <a href="/studio/">编辑器</a>
+    </nav>
+    <span>MIT License · 2026</span>
+  </footer>
+</BaseLayout>

@@ -1,0 +1,75 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  bodyClass?: string;
+  pageType?: 'website' | 'article';
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
+  indexable?: boolean;
+}
+
+const {
+  title,
+  description,
+  bodyClass = '',
+  pageType = 'website',
+  structuredData = [],
+  indexable = true,
+} = Astro.props;
+const canonicalUrl = Astro.site && indexable ? new URL(Astro.url.pathname, Astro.site) : undefined;
+const socialImageUrl = Astro.site ? new URL('/social-preview.png', Astro.site) : undefined;
+const websiteId = Astro.site ? new URL('/#website', Astro.site).href : '#website';
+const pageId = canonicalUrl ? `${canonicalUrl.href}#webpage` : '#webpage';
+const pageSchema = {
+  '@type': 'WebPage',
+  '@id': pageId,
+  url: canonicalUrl?.href,
+  name: title,
+  description,
+  inLanguage: 'zh-CN',
+  isPartOf: {
+    '@type': 'WebSite',
+    '@id': websiteId,
+    name: '纸间排版',
+    url: Astro.site?.href,
+    inLanguage: 'zh-CN',
+  },
+};
+const additionalSchema = Array.isArray(structuredData) ? structuredData : [structuredData];
+const schemaGraph = [pageSchema, ...additionalSchema];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="robots" content={indexable ? 'index, follow, max-image-preview:large' : 'noindex, follow'} />
+    <meta name="theme-color" content="#f3eee3" />
+    <meta name="generator" content={Astro.generator} />
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:type" content={pageType} />
+    <meta property="og:site_name" content="纸间排版" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+    {socialImageUrl && <meta property="og:image" content={socialImageUrl} />}
+    {socialImageUrl && <meta property="og:image:width" content="1200" />}
+    {socialImageUrl && <meta property="og:image:height" content="630" />}
+    {socialImageUrl && <meta property="og:image:alt" content="纸间排版首页界面" />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {socialImageUrl && <meta name="twitter:image" content={socialImageUrl} />}
+    {indexable && <script is:inline type="application/ld+json" set:html={JSON.stringify({ '@context': 'https://schema.org', '@graph': schemaGraph })} />}
+    <title>{title}</title>
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <slot />
+  </body>
+</html>
