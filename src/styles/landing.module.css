@@ -691,6 +691,10 @@
   background: var(--color-paper);
 }
 
+.themeStrip li[data-channel="wechat"] {
+  grid-column: 1 / -1;
+}
+
 .themeStrip li > i {
   width: 14px;
   height: 14px;
@@ -1191,6 +1195,10 @@
     grid-template-columns: 12px minmax(70px, 0.5fr) minmax(88px, 1fr);
     column-gap: 10px;
     padding: 16px;
+  }
+
+  .themeStrip li[data-channel="wechat"] {
+    grid-column: auto;
   }
 
   .themeStrip li > i {

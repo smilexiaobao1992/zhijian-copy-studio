@@ -4,9 +4,9 @@ export const GET: APIRoute = ({ site }) => {
   const pageUrl = (path: string) => (site ? new URL(path, site).href : path);
   const content = `# 纸间排版（Zhijian Copy Studio）
 
-> 开源、本地优先的小红书图文文案排版器，将 Markdown 或普通文案转换为适合复制发布的结构化纯文本。
+> 开源、本地优先的小红书与微信公众号文案排版器，将 Markdown 或普通文案转换为适合复制发布的纯文本或安全富文本。
 
-纸间排版在浏览器本地运行，不要求登录，不上传文案，不自动发布。当前提供四套排版主题、三个内容模板、实时左右对照预览、本地草稿保存和发布前统计提示。
+纸间排版在浏览器本地运行，不要求登录，不上传文案，不自动发布。当前提供四套小红书主题、一个公众号富文本主题、三个内容模板、实时左右对照预览、本地草稿保存和发布前统计提示。
 
 ## 主要页面
 
@@ -18,7 +18,7 @@ export const GET: APIRoute = ({ site }) => {
 
 ## 技术概要
 
-输入先由 unified、remark-parse 与 remark-gfm 解析为 mdast，再由独立的小红书渠道渲染器生成纯文本。微信公众号安全富文本渲染器处于规划阶段。
+输入先由 unified、remark-parse 与 remark-gfm 解析为 mdast，再由独立渠道渲染器生成小红书纯文本或微信公众号安全内联样式 HTML。原始 HTML 不会透传，链接协议经过白名单检查。
 `;
 
   return new Response(content, {

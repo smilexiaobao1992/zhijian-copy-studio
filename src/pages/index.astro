@@ -7,7 +7,7 @@ const applicationSchema = {
   '@id': Astro.site ? new URL('/#application', Astro.site).href : '#application',
   name: '纸间排版',
   alternateName: 'Zhijian Copy Studio',
-  description: '开源、本地优先的小红书纯文本排版器，可将 Markdown 转换为适合复制发布的结构化文案。',
+  description: '开源、本地优先的小红书与微信公众号排版器，可将 Markdown 转换为纯文本或安全富文本。',
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'Any',
   browserRequirements: 'Requires JavaScript',
@@ -20,7 +20,9 @@ const applicationSchema = {
   featureList: [
     'Markdown 文案解析',
     '小红书纯文本排版',
+    '微信公众号富文本排版',
     '四套结构化主题',
+    '公众号编辑部手记主题',
     '本地草稿保存',
     '实时左右对照预览',
   ],
@@ -29,8 +31,8 @@ const applicationSchema = {
 ---
 
 <BaseLayout
-  title="纸间排版 · 把 Markdown 变成舒服的小红书文案"
-  description="开源、本地优先的小红书纯文本排版器。输入 Markdown，切换主题，实时预览并一键复制。"
+  title="纸间排版 · 小红书与公众号 Markdown 排版器"
+  description="开源、本地优先的小红书与微信公众号排版器。输入 Markdown，切换渠道和主题，实时预览并复制发布。"
   structuredData={applicationSchema}
 >
   <header class={styles.header}>
@@ -116,7 +118,7 @@ const applicationSchema = {
       <div class={styles.sectionIndex}>02 / 渠道</div>
       <div>
         <h2 id="roadmap-heading">同一份结构，两个输出方向。</h2>
-        <p>小红书保留平台友好的符号层级，复制后即可发布。公众号将支持字号、颜色和间距更丰富的图文排版。</p>
+        <p>小红书保留平台友好的符号层级，公众号生成带字号、颜色和间距的安全富文本，两种结果都可以直接复制。</p>
         <div class={styles.channelFlow} aria-hidden="true">
           <span class={styles.flowSource}>MD</span>
           <i></i>
@@ -129,10 +131,10 @@ const applicationSchema = {
           <h3>小红书</h3>
           <p>四套主题、三个内容模板、实时预览、一键复制。</p>
         </article>
-        <article data-status="next">
-          <span>下一阶段</span>
+        <article data-status="ready">
+          <span>现在可用</span>
           <h3>公众号</h3>
-          <p>沿用同一份文案，输出可粘贴到公众号编辑器的富文本。</p>
+          <p>编辑部手记主题、安全内联样式、实时预览与富文本复制。</p>
         </article>
       </div>
     </section>
@@ -140,7 +142,7 @@ const applicationSchema = {
     <section class={styles.themeStrip} aria-labelledby="themes-heading">
       <div>
         <span class={styles.sectionIndex}>03 / 主题</span>
-        <h2 id="themes-heading">四种性格，不是四次换色。</h2>
+        <h2 id="themes-heading">四种文案性格，一份刊物气质。</h2>
       </div>
       <ul>
         <li style="--theme-color:#C6533D">
@@ -158,6 +160,10 @@ const applicationSchema = {
         <li style="--theme-color:#4D647E">
           <i></i><div><strong>步序</strong><span>清单和教程</span></div>
           <div class={styles.themeGlyph} aria-hidden="true"><b>①</b><em></em><em></em><em></em></div>
+        </li>
+        <li data-channel="wechat" style="--theme-color:#B44735">
+          <i></i><div><strong>编辑部手记</strong><span>公众号观点与深度内容</span></div>
+          <div class={styles.themeGlyph} aria-hidden="true"><b>刊</b><em></em><em></em><em></em></div>
         </li>
       </ul>
     </section>

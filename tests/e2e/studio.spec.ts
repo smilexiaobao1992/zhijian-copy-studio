@@ -30,12 +30,24 @@ test('formats Markdown and switches themes', async ({ page }) => {
   await expect(page.getByLabel('排版后的正文')).toContainText('▌ 安装方法');
 });
 
+test('switches to the editorial WeChat renderer', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only channel detail');
+  await page.goto('/studio/');
+
+  await page.getByRole('button', { name: '公众号', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '微信公众号富文本' })).toBeVisible();
+  await expect(page.getByLabel('排版后的公众号文章')).toContainText('FEATURE / 01');
+  await expect(page.getByRole('button', { name: '复制公众号富文本' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '主题 · 编辑部手记' })).toBeVisible();
+});
+
 test('mobile view can switch from editor to preview', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'mobile-only behavior');
   await page.goto('/studio/');
+  await page.getByRole('button', { name: '公众号', exact: true }).click();
   await page.getByRole('button', { name: '预览', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '小红书纯文本' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '复制小红书正文' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '微信公众号富文本' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '复制公众号富文本' })).toBeVisible();
 });
 
 test('compact window keeps editor and preview side by side', async ({ page }, testInfo) => {

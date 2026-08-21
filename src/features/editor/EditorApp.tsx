@@ -1,17 +1,23 @@
 import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { parseDocument } from '../../core/document';
+import { renderWechat } from '../../core/render-wechat';
 import { renderXiaohongshu } from '../../core/render-xhs';
 import { getTemplate } from '../../core/templates';
 import { getTheme } from '../../core/themes';
-import { copyPlainText } from './clipboard';
+import { getWechatTheme } from '../../core/wechat-themes';
+import { copyPlainText, copyRichText } from './clipboard';
 import { PreviewPane } from './PreviewPane';
 import { defaultDraft, loadDraft, saveDraft } from './storage';
 import { ToolDrawer, type DrawerId } from './ToolDrawer';
 import styles from './EditorApp.module.css';
 
+type ChannelId = 'xiaohongshu' | 'wechat';
+
 interface EditorState {
   source: string;
   themeId: string;
+  wechatThemeId: string;
+  channel: ChannelId;
   activeDrawer: DrawerId | null;
   mobileView: 'edit' | 'preview';
 }
@@ -19,6 +25,8 @@ interface EditorState {
 type EditorAction =
   | { type: 'source'; source: string }
   | { type: 'theme'; themeId: string }
+  | { type: 'wechat-theme'; themeId: string }
+  | { type: 'channel'; channel: ChannelId }
   | { type: 'drawer'; drawer: DrawerId | null }
   | { type: 'mobile-view'; view: 'edit' | 'preview' }
   | { type: 'template'; source: string };
@@ -29,6 +37,10 @@ function reducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, source: action.source };
     case 'theme':
       return { ...state, themeId: action.themeId, activeDrawer: null };
+    case 'wechat-theme':
+      return { ...state, wechatThemeId: action.themeId, activeDrawer: null };
+    case 'channel':
+      return { ...state, channel: action.channel, activeDrawer: null };
     case 'drawer':
       return { ...state, activeDrawer: action.drawer };
     case 'mobile-view':
@@ -43,6 +55,8 @@ function initialState(): EditorState {
   return {
     source: draft.source,
     themeId: draft.themeId,
+    wechatThemeId: draft.wechatThemeId,
+    channel: draft.channel,
     activeDrawer: null,
     mobileView: 'edit',
   };
@@ -58,19 +72,34 @@ export function EditorApp() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved');
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [previewMotion, setPreviewMotion] = useState(false);
   const copyTimerRef = useRef<number | null>(null);
   const deferredSource = useDeferredValue(state.source);
-  const theme = useMemo(() => getTheme(state.themeId), [state.themeId]);
-  const result = useMemo(
-    () => renderXiaohongshu(parseDocument(deferredSource), theme),
-    [deferredSource, theme],
+  const xhsTheme = useMemo(() => getTheme(state.themeId), [state.themeId]);
+  const wechatTheme = useMemo(() => getWechatTheme(state.wechatThemeId), [state.wechatThemeId]);
+  const document = useMemo(() => parseDocument(deferredSource), [deferredSource]);
+  const xhsResult = useMemo(
+    () => state.channel === 'xiaohongshu' ? renderXiaohongshu(document, xhsTheme) : null,
+    [document, state.channel, xhsTheme],
   );
+  const wechatResult = useMemo(
+    () => state.channel === 'wechat' ? renderWechat(document, wechatTheme) : null,
+    [document, state.channel, wechatTheme],
+  );
+  const result = xhsResult ?? wechatResult!;
+  const activeTheme = state.channel === 'xiaohongshu' ? xhsTheme : wechatTheme;
 
   useEffect(() => {
     setSaveState('saving');
     const timer = window.setTimeout(() => {
       try {
-        saveDraft({ schemaVersion: 1, source: state.source, themeId: state.themeId });
+        saveDraft({
+          schemaVersion: 1,
+          source: state.source,
+          themeId: state.themeId,
+          wechatThemeId: state.wechatThemeId,
+          channel: state.channel,
+        });
         setSaveState('saved');
       } catch {
         setSaveState('error');
@@ -78,23 +107,35 @@ export function EditorApp() {
     }, 420);
 
     return () => window.clearTimeout(timer);
-  }, [state.source, state.themeId]);
+  }, [state.channel, state.source, state.themeId, state.wechatThemeId]);
 
   useEffect(() => () => {
     if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
   }, []);
 
-  const documentName = result.plainText.split('\n')[0]?.replace(/^\S+\s*/, '').trim() || '未命名草稿';
+  const documentName = result.plainText.split('\n')[0]?.replace(/^\S+\s*/u, '').trim() || '未命名草稿';
 
   async function handleCopy() {
     try {
-      await copyPlainText(result.plainText);
+      if (wechatResult) {
+        await copyRichText(wechatResult.html, wechatResult.plainText);
+      } else {
+        await copyPlainText(result.plainText);
+      }
       setCopyState('copied');
     } catch {
       setCopyState('error');
     }
     if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
     copyTimerRef.current = window.setTimeout(() => setCopyState('idle'), 1800);
+  }
+
+  function selectChannel(channel: ChannelId) {
+    if (channel === state.channel) return;
+    if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+    setCopyState('idle');
+    setPreviewMotion(true);
+    dispatch({ type: 'channel', channel });
   }
 
   function selectTemplate(templateId: string) {
@@ -118,14 +159,22 @@ export function EditorApp() {
       <header className={styles.appHeader}>
         <a className={styles.brand} href="/" aria-label="纸间排版首页">
           <span className={styles.brandSeal} aria-hidden="true">纸</span>
-          <span><strong>纸间排版</strong><small>Social Copy Studio</small></span>
+          <span className={styles.brandName}><strong>纸间排版</strong><small>Social Copy Studio</small></span>
         </a>
 
         <div className={styles.documentTitle} title={documentName}>{documentName}</div>
 
         <div className={styles.channelSwitch} aria-label="输出渠道">
-          <button type="button" data-active="true">小红书</button>
-          <button type="button" disabled title="公众号富文本将在下一阶段开放">公众号 <span>随后</span></button>
+          <button
+            type="button"
+            data-active={state.channel === 'xiaohongshu'}
+            onClick={() => selectChannel('xiaohongshu')}
+          >小红书</button>
+          <button
+            type="button"
+            data-active={state.channel === 'wechat'}
+            onClick={() => selectChannel('wechat')}
+          >公众号</button>
         </div>
 
         <div className={styles.mobileSwitch} aria-label="移动端工作区切换">
@@ -172,9 +221,13 @@ export function EditorApp() {
         {state.activeDrawer ? (
           <ToolDrawer
             activeDrawer={state.activeDrawer}
-            selectedThemeId={theme.id}
+            channel={state.channel}
+            selectedThemeId={activeTheme.id}
             onClose={() => dispatch({ type: 'drawer', drawer: null })}
-            onSelectTheme={(themeId) => dispatch({ type: 'theme', themeId })}
+            onSelectTheme={(themeId) => dispatch({
+              type: state.channel === 'xiaohongshu' ? 'theme' : 'wechat-theme',
+              themeId,
+            })}
             onSelectTemplate={selectTemplate}
           />
         ) : null}
@@ -186,8 +239,8 @@ export function EditorApp() {
               <h1 id="editor-heading">Markdown 编辑器</h1>
             </div>
             <button className={styles.themeShortcut} type="button" onClick={() => toggleDrawer('themes')}>
-              <span className={styles.themeDot} style={{ backgroundColor: theme.swatch }} aria-hidden="true" />
-              主题 · {theme.name}
+              <span className={styles.themeDot} style={{ backgroundColor: activeTheme.swatch }} aria-hidden="true" />
+              主题 · {activeTheme.name}
             </button>
           </header>
 
@@ -208,7 +261,25 @@ export function EditorApp() {
           </footer>
         </section>
 
-        <PreviewPane result={result} theme={theme} copyState={copyState} onCopy={handleCopy} />
+        {wechatResult ? (
+          <PreviewPane
+            channel="wechat"
+            result={wechatResult}
+            theme={wechatTheme}
+            copyState={copyState}
+            onCopy={handleCopy}
+            animate={previewMotion}
+          />
+        ) : xhsResult ? (
+          <PreviewPane
+            channel="xiaohongshu"
+            result={xhsResult}
+            theme={xhsTheme}
+            copyState={copyState}
+            onCopy={handleCopy}
+            animate={previewMotion}
+          />
+        ) : null}
       </main>
     </div>
   );

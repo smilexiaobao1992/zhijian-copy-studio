@@ -2,7 +2,7 @@
 
 ## 1. Visual theme and atmosphere
 
-The product is a quiet editorial workbench: warm paper, dark ink, and one vermilion action color. It should feel closer to a careful writing desk than a SaaS dashboard. The interface stays restrained so the creator's copy remains the strongest visual element.
+The product is a quiet editorial workbench: warm paper, dark ink, and one vermilion action color. It should feel closer to a careful writing desk than a SaaS dashboard. The interface stays restrained so the creator's copy remains the strongest visual element. The WeChat output extends this into a Chinese independent-magazine page rather than a generic colorful template.
 
 ## 2. Color palette and roles
 
@@ -30,6 +30,8 @@ The product is a quiet editorial workbench: warm paper, dark ink, and one vermil
 - Inputs are flush paper surfaces with a single hairline divider. They do not use floating cards or inset shadows.
 - Tool navigation uses text plus a one-character marker, never unlabeled icons.
 - Status states keep a fixed 13px type size to prevent toolbar jitter.
+- Channel buttons remain visible on mobile so the user can switch output before opening preview.
+- The WeChat reading sheet uses inline typography and spacing identical to copied HTML.
 
 ## 5. Layout principles
 
@@ -46,6 +48,7 @@ Depth comes from background lightness steps. Only the reading sheet uses a restr
 
 - Do keep the primary route focused on writing, previewing, changing theme, and copying.
 - Do separate product UI tokens from exported content themes.
+- Do keep WeChat theme data separate from the renderer-owned HTML allowlist.
 - Do show output limitations as plain language beside the preview.
 - Do give every marketing section one content-specific geometric diagram instead of decorative filler.
 - Do preserve keyboard navigation and visible focus.
@@ -59,7 +62,7 @@ Depth comes from background lightness steps. Only the reading sheet uses a restr
 - Above 1100px: full three-column workspace.
 - Between 801px and 1100px: narrower preview and compact labels.
 - Between 481px and 800px: compact side-by-side editor and preview.
-- At 480px and below: one content pane, edit/preview switch in the header, fixed bottom tool rail, safe-area padding.
+- At 480px and below: one content pane, brand seal, channel switch, and edit/preview switch share the header; the bottom tool rail keeps safe-area padding.
 - All touch targets remain at least 40px.
 
 ## 9. Agent prompt guide

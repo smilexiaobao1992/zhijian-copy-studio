@@ -1,11 +1,13 @@
 import { contentTemplates } from '../../core/templates';
 import { xhsThemes } from '../../core/themes';
+import { wechatThemes } from '../../core/wechat-themes';
 import styles from './EditorApp.module.css';
 
 export type DrawerId = 'themes' | 'templates' | 'guide';
 
 interface ToolDrawerProps {
   activeDrawer: DrawerId;
+  channel: 'xiaohongshu' | 'wechat';
   selectedThemeId: string;
   onClose: () => void;
   onSelectTheme: (themeId: string) => void;
@@ -14,11 +16,15 @@ interface ToolDrawerProps {
 
 export function ToolDrawer({
   activeDrawer,
+  channel,
   selectedThemeId,
   onClose,
   onSelectTheme,
   onSelectTemplate,
 }: ToolDrawerProps) {
+  const themes = channel === 'xiaohongshu' ? xhsThemes : wechatThemes;
+  const channelName = channel === 'xiaohongshu' ? '小红书纯文本' : '微信公众号富文本';
+
   return (
     <aside className={styles.drawer} id="tool-drawer" aria-label="排版工具面板">
       <div className={styles.drawerHeader}>
@@ -37,7 +43,7 @@ export function ToolDrawer({
 
       {activeDrawer === 'themes' ? (
         <div className={styles.drawerList}>
-          {xhsThemes.map((theme) => (
+          {themes.map((theme) => (
             <button
               className={styles.themeOption}
               data-selected={theme.id === selectedThemeId}
@@ -75,7 +81,7 @@ export function ToolDrawer({
 
       {activeDrawer === 'guide' ? (
         <div className={styles.guide}>
-          <p>输入普通文案或 Markdown，右侧会立即生成小红书纯文本。</p>
+          <p>输入普通文案或 Markdown，右侧会立即生成{channelName}。</p>
           <dl>
             <div><dt># 标题</dt><dd>生成主题化小标题</dd></div>
             <div><dt>- 列表</dt><dd>生成符号列表</dd></div>
@@ -83,7 +89,11 @@ export function ToolDrawer({
             <div><dt>&gt; 提示</dt><dd>生成醒目引用</dd></div>
             <div><dt>**重点**</dt><dd>生成纯文本强调</dd></div>
           </dl>
-          <p className={styles.drawerNote}>标题、强调和列表会转换成适合小红书发布的纯文本格式。</p>
+          <p className={styles.drawerNote}>
+            {channel === 'xiaohongshu'
+              ? '标题、强调和列表会转换成适合小红书发布的纯文本格式。'
+              : '公众号输出只使用安全的内联样式，复制后粘贴到公众号编辑器即可继续调整。'}
+          </p>
         </div>
       ) : null}
     </aside>
