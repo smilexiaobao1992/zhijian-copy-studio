@@ -86,4 +86,62 @@ npm run build
       accentColor: '#fff;position:fixed',
     })).toThrow();
   });
+
+  it('resolves safe reference links and images and renders footnote definitions', () => {
+    const document = parseDocument(`参考[项目主页][site]、[帮助中心][]和[直接入口]。
+
+![封面图][cover]
+
+正文带脚注[^note]。
+
+[site]: https://example.com/project
+[帮助中心]: https://example.com/help
+[直接入口]: https://example.com/start
+[cover]: https://example.com/cover.jpg
+[^note]: 这是脚注正文。`);
+    const result = renderWechat(document, getWechatTheme('editorial-notes'));
+
+    expect(result.html).toContain('href="https://example.com/project"');
+    expect(result.html).toContain('href="https://example.com/help"');
+    expect(result.html).toContain('href="https://example.com/start"');
+    expect(result.html).toContain('图｜封面图');
+    expect(result.html).not.toContain('<img');
+    expect(result.html).toContain('注释 / note');
+    expect(result.html).toContain('这是脚注正文。');
+    expect(result.plainText).toContain('［note］ 这是脚注正文。');
+    expect(result.warnings.map((warning) => warning.code)).toContain('image-placeholder');
+  });
+
+  it('blocks unsafe URLs resolved through reference definitions', () => {
+    const document = parseDocument('[危险链接][unsafe]\n\n[unsafe]: javascript:alert(1)');
+    const result = renderWechat(document, getWechatTheme('editorial-notes'));
+
+    expect(result.html).toContain('危险链接');
+    expect(result.html).not.toContain('javascript:');
+    expect(result.plainText).toBe('危险链接');
+    expect(result.warnings.map((warning) => warning.code)).toContain('unsafe-link');
+  });
+
+  it('canonicalizes leading footnotes after the article without polluting stats', () => {
+    const document = parseDocument('[^note]: 前置脚注。\n\n# 主标题\n\n正文[^note]。');
+    const result = renderWechat(document, getWechatTheme('editorial-notes'));
+
+    expect(result.html.indexOf('FEATURE / 01')).toBeLessThan(result.html.indexOf('注释 / note'));
+    expect(result.plainText.indexOf('主标题')).toBeLessThan(result.plainText.indexOf('［note］ 前置脚注。'));
+    expect(result.stats.headings).toBe(1);
+    expect(result.stats.paragraphs).toBe(1);
+  });
+
+  it('outputs only referenced footnotes in first-reference order', () => {
+    const document = parseDocument(`正文[^second][^first]。
+
+[^first]: 第一条。
+[^unused]: 内部备注。
+[^second]: 第二条。`);
+    const result = renderWechat(document, getWechatTheme('editorial-notes'));
+
+    expect(result.html).not.toContain('内部备注');
+    expect(result.html.indexOf('注释 / second')).toBeLessThan(result.html.indexOf('注释 / first'));
+    expect(result.plainText).not.toContain('内部备注');
+  });
 });

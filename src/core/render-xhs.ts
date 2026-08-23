@@ -9,6 +9,12 @@ import type {
   Table,
 } from 'mdast';
 import type { ContentDocument } from './document';
+import {
+  collectMarkdownReferences,
+  normalizeReferenceIdentifier,
+  type MarkdownDefinition,
+  type MarkdownFootnote,
+} from './markdown-references';
 import type { XhsTheme } from './theme-schema';
 import { analyzeXhsSource, type XhsStructureAnalysis } from './xhs-organizer';
 
@@ -43,33 +49,45 @@ interface RenderContext {
   headings: number;
   paragraphs: number;
   sawRawHtml: boolean;
+  definitions: ReadonlyMap<string, MarkdownDefinition>;
 }
 
 const circledNumbers = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 const filledNumbers = ['❶', '❷', '❸', '❹', '❺', '❻', '❼', '❽', '❾', '❿'];
 const keycapNumbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
-function renderPhrasing(children: readonly PhrasingContent[], theme: XhsTheme): string {
-  return children.map((node) => renderInline(node, theme)).join('');
+function renderPhrasing(
+  children: readonly PhrasingContent[],
+  theme: XhsTheme,
+  context: RenderContext,
+): string {
+  return children.map((node) => renderInline(node, theme, context)).join('');
 }
 
-function renderInline(node: PhrasingContent, theme: XhsTheme): string {
+function renderInline(node: PhrasingContent, theme: XhsTheme, context: RenderContext): string {
   switch (node.type) {
     case 'text':
       return node.value;
     case 'strong':
-      return `${theme.rules.strongOpen}${renderPhrasing(node.children, theme)}${theme.rules.strongClose}`;
+      return `${theme.rules.strongOpen}${renderPhrasing(node.children, theme, context)}${theme.rules.strongClose}`;
     case 'emphasis':
-      return `${theme.rules.emphasisOpen}${renderPhrasing(node.children, theme)}${theme.rules.emphasisClose}`;
+      return `${theme.rules.emphasisOpen}${renderPhrasing(node.children, theme, context)}${theme.rules.emphasisClose}`;
     case 'delete':
-      return renderPhrasing(node.children, theme);
+      return renderPhrasing(node.children, theme, context);
     case 'inlineCode':
       return `${theme.rules.codePrefix}${node.value}`;
     case 'break':
       return '\n';
     case 'link':
-      return renderLink(node, theme);
+      return renderLink(node, theme, context);
+    case 'linkReference': {
+      const label = renderPhrasing(node.children, theme, context).trim();
+      const definition = context.definitions.get(normalizeReferenceIdentifier(node.identifier));
+      return definition ? renderLinkedLabel(label, definition.url) : label;
+    }
     case 'image':
+      return node.alt ? `［图片：${node.alt}］` : '［图片］';
+    case 'imageReference':
       return node.alt ? `［图片：${node.alt}］` : '［图片］';
     case 'footnoteReference':
       return `［${node.identifier}］`;
@@ -78,10 +96,13 @@ function renderInline(node: PhrasingContent, theme: XhsTheme): string {
   }
 }
 
-function renderLink(node: Link, theme: XhsTheme): string {
-  const label = renderPhrasing(node.children, theme).trim();
-  if (!label || label === node.url) return node.url;
-  return `${label}（${node.url}）`;
+function renderLinkedLabel(label: string, url: string): string {
+  if (!label || label === url) return url;
+  return `${label}（${url}）`;
+}
+
+function renderLink(node: Link, theme: XhsTheme, context: RenderContext): string {
+  return renderLinkedLabel(renderPhrasing(node.children, theme, context).trim(), node.url);
 }
 
 function headingPrefix(theme: XhsTheme, index: number): string {
@@ -107,8 +128,8 @@ function orderedMarker(theme: XhsTheme, value: number): string {
   }
 }
 
-function renderParagraph(node: Paragraph, theme: XhsTheme): string {
-  return renderPhrasing(node.children, theme)
+function renderParagraph(node: Paragraph, theme: XhsTheme, context: RenderContext): string {
+  return renderPhrasing(node.children, theme, context)
     .replace(/\s+([「【﹝〈〔（])/gu, '$1')
     .replace(/([」】﹞〉〕）])\s+/gu, '$1')
     .trim();
@@ -150,9 +171,9 @@ function renderQuote(node: Blockquote, theme: XhsTheme, context: RenderContext):
     .join('\n');
 }
 
-function renderTable(node: Table, theme: XhsTheme): string {
+function renderTable(node: Table, theme: XhsTheme, context: RenderContext): string {
   return node.children
-    .map((row) => row.children.map((cell) => renderPhrasing(cell.children, theme).trim()).join('｜'))
+    .map((row) => row.children.map((cell) => renderPhrasing(cell.children, theme, context).trim()).join('｜'))
     .join('\n');
 }
 
@@ -160,11 +181,11 @@ function renderBlock(node: RootContent, theme: XhsTheme, context: RenderContext)
   switch (node.type) {
     case 'paragraph':
       context.paragraphs += 1;
-      return renderParagraph(node, theme);
+      return renderParagraph(node, theme, context);
     case 'heading': {
       context.headingIndex += 1;
       context.headings += 1;
-      const title = renderPhrasing(node.children, theme).trim();
+      const title = renderPhrasing(node.children, theme, context).trim();
       return `${headingPrefix(theme, context.headingIndex)}${title}`;
     }
     case 'list':
@@ -176,13 +197,25 @@ function renderBlock(node: RootContent, theme: XhsTheme, context: RenderContext)
     case 'code':
       return `${theme.rules.codePrefix}\n${node.value.trim()}`;
     case 'table':
-      return renderTable(node, theme);
+      return renderTable(node, theme, context);
+    case 'footnoteDefinition':
+    case 'definition':
+      return '';
     case 'html':
       context.sawRawHtml = true;
       return '';
     default:
       return '';
   }
+}
+
+function renderFootnote(
+  footnote: MarkdownFootnote,
+  theme: XhsTheme,
+  context: RenderContext,
+): string {
+  const content = footnote.children.map((child) => renderBlock(child, theme, context)).filter(Boolean).join('\n');
+  return content ? `［${footnote.identifier}］ ${content}` : '';
 }
 
 function uniqueWarnings(warnings: readonly RenderWarning[]): RenderWarning[] {
@@ -212,7 +245,10 @@ function publishingText(children: readonly PhrasingContent[]): string {
         return '\n';
       case 'link':
         return publishingText(node.children).trim() || node.url;
+      case 'linkReference':
+        return publishingText(node.children).trim();
       case 'image':
+      case 'imageReference':
         return node.alt ?? '';
       case 'footnoteReference':
         return `［${node.identifier}］`;
@@ -239,18 +275,30 @@ export function renderXiaohongshu(
   document: ContentDocument,
   theme: XhsTheme,
 ): XhsRenderResult {
+  const references = collectMarkdownReferences(document.ast);
   const context: RenderContext = {
     headingIndex: 0,
     headings: 0,
     paragraphs: 0,
     sawRawHtml: containsRawHtml(document.ast),
+    definitions: references.definitions,
+  };
+  const footnoteContext: RenderContext = {
+    headingIndex: 0,
+    headings: 0,
+    paragraphs: 0,
+    sawRawHtml: false,
+    definitions: references.definitions,
   };
 
   const renderedBlocks = document.ast.children
+    .filter((node) => node.type !== 'definition' && node.type !== 'footnoteDefinition')
     .map((node) => ({ node, text: renderBlock(node, theme, context) }))
     .filter((block) => Boolean(block.text));
-  const plainText = renderedBlocks
-    .map((block) => block.text)
+  const footnoteBlocks = references.footnotes
+    .map((footnote) => renderFootnote(footnote, theme, footnoteContext))
+    .filter(Boolean);
+  const plainText = [...renderedBlocks.map((block) => block.text), ...footnoteBlocks]
     .join('\n\n')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
@@ -278,6 +326,7 @@ export function renderXiaohongshu(
       ...bodyBlocks.slice(1),
     ].filter(Boolean);
   }
+  bodyBlocks.push(...footnoteBlocks);
   const separated = extractTopics(bodyBlocks.join('\n\n'));
 
   if (!plainText) {

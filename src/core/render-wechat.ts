@@ -9,6 +9,12 @@ import type {
   Table,
 } from 'mdast';
 import type { ContentDocument } from './document';
+import {
+  collectMarkdownReferences,
+  normalizeReferenceIdentifier,
+  type MarkdownDefinition,
+  type MarkdownFootnote,
+} from './markdown-references';
 import type { WechatTheme } from './wechat-theme-schema';
 import {
   defaultWechatStyleConfig,
@@ -44,6 +50,7 @@ interface RenderContext {
   sawRawHtml: boolean;
   sawImage: boolean;
   blockedLinks: number;
+  definitions: ReadonlyMap<string, MarkdownDefinition>;
   style: ResolvedWechatStyle;
 }
 
@@ -112,11 +119,14 @@ function renderInline(
       return '<br />';
     case 'link':
       return renderLink(node, theme, context);
-    case 'image': {
-      context.sawImage = true;
-      const label = node.alt ? `图｜${node.alt}` : '图｜图片位置';
-      return `<span style="display:block;margin:22px 0;padding:14px 16px;background-color:${palette.soft};color:${palette.muted};font-size:13px;text-align:center;letter-spacing:0.08em;">${escapeHtml(label)}</span>`;
+    case 'linkReference': {
+      const label = renderPhrasing(node.children, theme, context) || escapeHtml(node.label ?? node.identifier);
+      const definition = context.definitions.get(normalizeReferenceIdentifier(node.identifier));
+      return definition ? renderLinkedLabel(label, definition.url, theme, context) : label;
     }
+    case 'image':
+    case 'imageReference':
+      return renderImagePlaceholder(node.alt, palette, context);
     case 'footnoteReference':
       return `<sup style="color:${palette.accent};font-size:0.72em;">［${escapeHtml(node.identifier)}］</sup>`;
     default:
@@ -124,15 +134,34 @@ function renderInline(
   }
 }
 
-function renderLink(node: Link, theme: WechatTheme, context: RenderContext): string {
-  const label = renderPhrasing(node.children, theme, context) || escapeHtml(node.url);
-  const url = safeLinkUrl(node.url);
+function renderImagePlaceholder(
+  alt: string | null | undefined,
+  palette: WechatTheme['palette'],
+  context: RenderContext,
+): string {
+  context.sawImage = true;
+  const label = alt ? `图｜${alt}` : '图｜图片位置';
+  return `<span style="display:block;margin:22px 0;padding:14px 16px;background-color:${palette.soft};color:${palette.muted};font-size:13px;text-align:center;letter-spacing:0.08em;">${escapeHtml(label)}</span>`;
+}
+
+function renderLinkedLabel(
+  label: string,
+  requestedUrl: string,
+  theme: WechatTheme,
+  context: RenderContext,
+): string {
+  const url = safeLinkUrl(requestedUrl);
   if (!url) {
     context.blockedLinks += 1;
     return label;
   }
 
   return `<a href="${escapeHtml(url)}" style="color:${theme.palette.accent};text-decoration:underline;text-decoration-color:${theme.palette.line};text-underline-offset:3px;">${label}</a>`;
+}
+
+function renderLink(node: Link, theme: WechatTheme, context: RenderContext): string {
+  const label = renderPhrasing(node.children, theme, context) || escapeHtml(node.url);
+  return renderLinkedLabel(label, node.url, theme, context);
 }
 
 function paragraphStyle(theme: WechatTheme, context: RenderContext): string {
@@ -269,6 +298,9 @@ function renderBlock(node: RootContent, theme: WechatTheme, context: RenderConte
     }
     case 'table':
       return renderTable(node, theme, context);
+    case 'footnoteDefinition':
+    case 'definition':
+      return '';
     case 'html':
       context.sawRawHtml = true;
       return '';
@@ -277,7 +309,22 @@ function renderBlock(node: RootContent, theme: WechatTheme, context: RenderConte
   }
 }
 
-function plainPhrasing(children: readonly PhrasingContent[]): string {
+function renderFootnote(
+  footnote: MarkdownFootnote,
+  theme: WechatTheme,
+  context: RenderContext,
+): string {
+  const content = footnote.children.map((child) => renderBlock(child, theme, context)).filter(Boolean).join('');
+  return content ? `<section style="margin:24px 0;padding-top:12px;border-top:1px solid ${theme.palette.line};">
+    <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.14em;">注释 / ${escapeHtml(footnote.identifier)}</p>
+    ${content}
+  </section>` : '';
+}
+
+function plainPhrasing(
+  children: readonly PhrasingContent[],
+  definitions: ReadonlyMap<string, MarkdownDefinition>,
+): string {
   return children.map((node) => {
     switch (node.type) {
       case 'text':
@@ -286,14 +333,22 @@ function plainPhrasing(children: readonly PhrasingContent[]): string {
       case 'strong':
       case 'emphasis':
       case 'delete':
-        return plainPhrasing(node.children);
+        return plainPhrasing(node.children, definitions);
       case 'break':
         return '\n';
       case 'link': {
-        const label = plainPhrasing(node.children).trim();
-        return label && label !== node.url ? `${label}（${node.url}）` : node.url;
+        const label = plainPhrasing(node.children, definitions).trim();
+        const url = safeLinkUrl(node.url);
+        return url ? label && label !== url ? `${label}（${url}）` : url : label;
+      }
+      case 'linkReference': {
+        const label = plainPhrasing(node.children, definitions).trim();
+        const definition = definitions.get(normalizeReferenceIdentifier(node.identifier));
+        const url = definition ? safeLinkUrl(definition.url) : null;
+        return url ? label && label !== url ? `${label}（${url}）` : url : label;
       }
       case 'image':
+      case 'imageReference':
         return node.alt ? `［图片：${node.alt}］` : '［图片］';
       case 'footnoteReference':
         return `［${node.identifier}］`;
@@ -303,11 +358,14 @@ function plainPhrasing(children: readonly PhrasingContent[]): string {
   }).join('');
 }
 
-function plainBlock(node: RootContent): string {
+function plainBlock(
+  node: RootContent,
+  definitions: ReadonlyMap<string, MarkdownDefinition>,
+): string {
   switch (node.type) {
     case 'paragraph':
     case 'heading':
-      return plainPhrasing(node.children).trim();
+      return plainPhrasing(node.children, definitions).trim();
     case 'list': {
       const start = node.start ?? 1;
       return node.children.map((item, index) => {
@@ -318,23 +376,34 @@ function plainBlock(node: RootContent): string {
             : node.ordered
               ? `${start + index}.`
               : '•';
-        const body = item.children.map((child) => plainBlock(child)).filter(Boolean).join('\n  ');
+        const body = item.children.map((child) => plainBlock(child, definitions)).filter(Boolean).join('\n  ');
         return `${marker} ${body}`;
       }).join('\n');
     }
     case 'blockquote':
-      return node.children.map((child) => plainBlock(child)).filter(Boolean).join('\n').split('\n').map((line) => `> ${line}`).join('\n');
+      return node.children.map((child) => plainBlock(child, definitions)).filter(Boolean).join('\n').split('\n').map((line) => `> ${line}`).join('\n');
     case 'thematicBreak':
       return '· · ·';
     case 'code':
       return node.value.trim();
     case 'table':
-      return node.children.map((row) => row.children.map((cell) => plainPhrasing(cell.children).trim()).join('｜')).join('\n');
+      return node.children.map((row) => row.children.map((cell) => plainPhrasing(cell.children, definitions).trim()).join('｜')).join('\n');
+    case 'footnoteDefinition':
+    case 'definition':
+      return '';
     case 'html':
       return '';
     default:
       return '';
   }
+}
+
+function plainFootnote(
+  footnote: MarkdownFootnote,
+  definitions: ReadonlyMap<string, MarkdownDefinition>,
+): string {
+  const content = footnote.children.map((child) => plainBlock(child, definitions)).filter(Boolean).join('\n');
+  return content ? `［${footnote.identifier}］ ${content}` : '';
 }
 
 function containsRawHtml(node: unknown): boolean {
@@ -350,6 +419,8 @@ export function renderWechat(
   requestedStyle: WechatStyleConfig = defaultWechatStyleConfig,
 ): WechatRenderResult {
   const styleConfig = wechatStyleConfigSchema.parse(requestedStyle);
+  const references = collectMarkdownReferences(document.ast);
+  const { definitions } = references;
   const configuredTheme: WechatTheme = {
     ...theme,
     swatch: styleConfig.accentColor,
@@ -367,6 +438,7 @@ export function renderWechat(
     sawRawHtml: containsRawHtml(document.ast),
     sawImage: false,
     blockedLinks: 0,
+    definitions,
     style: {
       bodyFont: fontStacks[styleConfig.fontFamily],
       headingFont: fontStacks[styleConfig.fontFamily],
@@ -375,16 +447,33 @@ export function renderWechat(
       headingStyle: styleConfig.headingStyle,
     },
   };
-  const blocks = document.ast.children.map((node) => renderBlock(node, configuredTheme, context)).filter(Boolean);
-  const plainText = document.ast.children
-    .map(plainBlock)
+  const footnoteContext: RenderContext = {
+    ...context,
+    headingIndex: 0,
+    headings: 0,
+    paragraphs: 0,
+    sawRawHtml: false,
+    sawImage: false,
+    blockedLinks: 0,
+  };
+  const articleNodes = document.ast.children
+    .filter((node) => node.type !== 'definition' && node.type !== 'footnoteDefinition');
+  const blocks = articleNodes.map((node) => renderBlock(node, configuredTheme, context)).filter(Boolean);
+  const footnoteBlocks = references.footnotes
+    .map((footnote) => renderFootnote(footnote, configuredTheme, footnoteContext))
+    .filter(Boolean);
+  context.sawImage ||= footnoteContext.sawImage;
+  context.blockedLinks += footnoteContext.blockedLinks;
+  const plainText = [...articleNodes.map((node) => plainBlock(node, definitions)), ...references.footnotes.map(
+    (footnote) => plainFootnote(footnote, definitions),
+  )]
     .filter(Boolean)
     .join('\n\n')
     .replace(/[ \t]+\n/gu, '\n')
     .replace(/\n{3,}/gu, '\n\n')
     .trim();
   const html = plainText
-    ? `<section data-zhijian-theme="${escapeHtml(theme.id)}" data-zhijian-heading="${escapeHtml(styleConfig.headingStyle)}" style="box-sizing:border-box;margin:0;padding:28px 22px 34px;background-color:${configuredTheme.palette.paper};color:${configuredTheme.palette.ink};font-family:${context.style.bodyFont};font-size:${styleConfig.bodySize}px;line-height:${styleConfig.lineHeight};word-break:break-word;">${blocks.join('')}</section>`
+    ? `<section data-zhijian-theme="${escapeHtml(theme.id)}" data-zhijian-heading="${escapeHtml(styleConfig.headingStyle)}" style="box-sizing:border-box;margin:0;padding:28px 22px 34px;background-color:${configuredTheme.palette.paper};color:${configuredTheme.palette.ink};font-family:${context.style.bodyFont};font-size:${styleConfig.bodySize}px;line-height:${styleConfig.lineHeight};word-break:break-word;">${[...blocks, ...footnoteBlocks].join('')}</section>`
     : '';
   const warnings: WechatRenderWarning[] = [];
 

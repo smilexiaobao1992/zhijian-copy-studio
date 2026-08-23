@@ -128,4 +128,49 @@ npm run build
     expect(result.plainText).toContain('名称｜状态\n纸间｜开源');
     expect(result.plainText).toContain('命令｜\nnpm run build');
   });
+
+  it('resolves reference links and images and renders footnote definitions', () => {
+    const document = parseDocument(`参考[项目主页][site]、[帮助中心][]和[直接入口]。
+
+![封面图][cover]
+
+正文带脚注[^note]。
+
+[site]: https://example.com/project
+[帮助中心]: https://example.com/help
+[直接入口]: https://example.com/start
+[cover]: https://example.com/cover.jpg
+[^note]: 这是脚注正文。`);
+    const result = renderXiaohongshu(document, getTheme('clear-note'));
+
+    expect(result.plainText).toContain('项目主页（https://example.com/project）');
+    expect(result.plainText).toContain('帮助中心（https://example.com/help）');
+    expect(result.plainText).toContain('直接入口（https://example.com/start）');
+    expect(result.plainText).toContain('［图片：封面图］');
+    expect(result.plainText).toContain('正文带脚注［note］。');
+    expect(result.plainText).toContain('［note］ 这是脚注正文。');
+    expect(result.plainText).not.toContain('[site]:');
+  });
+
+  it('keeps leading footnote definitions out of article title and stats', () => {
+    const document = parseDocument('[^note]: 前置脚注。\n\n# 主标题\n\n正文[^note]。');
+    const result = renderXiaohongshu(document, getTheme('clear-note'));
+
+    expect(result.sections.title).toBe('主标题');
+    expect(result.plainText.indexOf('01｜主标题')).toBeLessThan(result.plainText.indexOf('［note］ 前置脚注。'));
+    expect(result.stats.headings).toBe(1);
+    expect(result.stats.paragraphs).toBe(1);
+  });
+
+  it('outputs only referenced footnotes in first-reference order', () => {
+    const document = parseDocument(`正文[^second][^first]。
+
+[^first]: 第一条。
+[^unused]: 内部备注。
+[^second]: 第二条。`);
+    const result = renderXiaohongshu(document, getTheme('clear-note'));
+
+    expect(result.plainText).not.toContain('内部备注');
+    expect(result.plainText.indexOf('［second］ 第二条。')).toBeLessThan(result.plainText.indexOf('［first］ 第一条。'));
+  });
 });

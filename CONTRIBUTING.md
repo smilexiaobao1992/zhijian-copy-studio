@@ -21,6 +21,10 @@
 - 使用 `src/core/render-xhs.test.ts` 增加输出断言。
 - 没有声称平台支持未经验证的样式或发布能力。
 
+## 扩展 Markdown 语义
+
+引用式链接和图片统一由 `src/core/markdown-references.ts` 建立定义索引。新增或修改 Markdown 节点支持时，必须同时检查小红书纯文本、公众号 HTML 与公众号纯文本回退，并在两个渠道的渲染测试中增加同一语义的断言。
+
 ## 新增公众号主题
 
 主题定义位于 `src/core/wechat-themes.ts`，必须通过 `wechatThemeSchema` 校验。公众号主题只提供颜色与标签数据，不能拼接标签、事件属性或任意 CSS。
