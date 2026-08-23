@@ -4,23 +4,32 @@ import type { WechatTheme } from '../../core/wechat-theme-schema';
 import type { XhsTheme } from '../../core/theme-schema';
 import styles from './EditorApp.module.css';
 
+export type CopyTarget = 'title' | 'body' | 'topics' | 'all';
+
 type PreviewPaneProps = {
   copyState: 'idle' | 'copied' | 'error';
-  onCopy: () => void;
+  copyTarget: CopyTarget;
+  onCopy: (target: CopyTarget) => void;
   animate: boolean;
 } & (
   | { channel: 'xiaohongshu'; result: XhsRenderResult; theme: XhsTheme }
-  | { channel: 'wechat'; result: WechatRenderResult; theme: WechatTheme }
+  | {
+    channel: 'wechat';
+    result: WechatRenderResult;
+    theme: WechatTheme;
+    styleName: string;
+    styleColor: string;
+  }
 );
 
 export function PreviewPane(props: PreviewPaneProps) {
-  const { channel, result, theme, copyState, onCopy, animate } = props;
+  const { channel, result, theme, copyState, copyTarget, onCopy, animate } = props;
   const isWechat = channel === 'wechat';
   const copyLabel = copyState === 'copied'
-    ? isWechat ? '已复制公众号富文本' : '已复制到剪贴板'
+    ? isWechat ? '已复制公众号富文本' : copyTarget === 'all' ? '已复制全部' : '复制全部'
     : copyState === 'error'
       ? '复制失败，请重试'
-      : isWechat ? '复制公众号富文本' : '复制小红书正文';
+      : isWechat ? '复制公众号富文本' : '复制全部';
   const previewTitle = isWechat ? '微信公众号富文本' : '小红书纯文本';
   const previewLabel = isWechat ? '排版后的公众号文章' : '排版后的正文';
   const readyMessage = isWechat
@@ -35,8 +44,12 @@ export function PreviewPane(props: PreviewPaneProps) {
           <h2 id="preview-heading">{previewTitle}</h2>
         </div>
         <div className={styles.previewMeta}>
-          <span className={styles.themeDot} style={{ backgroundColor: theme.swatch }} aria-hidden="true" />
-          {theme.name}
+          <span
+            className={styles.themeDot}
+            style={{ backgroundColor: isWechat ? props.styleColor : theme.swatch }}
+            aria-hidden="true"
+          />
+          {isWechat ? props.styleName : theme.name}
         </div>
       </header>
 
@@ -73,15 +86,36 @@ export function PreviewPane(props: PreviewPaneProps) {
         <div className={styles.previewStatus} aria-live="polite">
           {result.warnings[0]?.message ?? readyMessage}
         </div>
-        <button
-          className={styles.copyButton}
-          data-state={copyState}
-          type="button"
-          onClick={onCopy}
-          disabled={!result.plainText}
-        >
-          {copyLabel}
-        </button>
+        <div className={styles.copyActions} data-channel={channel}>
+          {!isWechat ? (
+            <div className={styles.copyParts} aria-label="分区复制">
+              {([
+                ['title', '标题', props.result.sections.title],
+                ['body', '正文', props.result.sections.body],
+                ['topics', '话题', props.result.sections.topics],
+              ] as const).map(([target, label, value]) => (
+                <button
+                  type="button"
+                  data-state={copyState === 'copied' && copyTarget === target ? 'copied' : 'idle'}
+                  key={target}
+                  onClick={() => onCopy(target)}
+                  disabled={!value}
+                >
+                  {copyState === 'copied' && copyTarget === target ? `已复制${label}` : `复制${label}`}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <button
+            className={styles.copyButton}
+            data-state={copyState === 'copied' && (isWechat || copyTarget === 'all') ? 'copied' : copyState}
+            type="button"
+            onClick={() => onCopy('all')}
+            disabled={!result.plainText}
+          >
+            {copyLabel}
+          </button>
+        </div>
       </footer>
     </section>
   );

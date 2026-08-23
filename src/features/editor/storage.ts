@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { defaultTemplate } from '../../core/templates';
 import { defaultThemeId } from '../../core/themes';
 import { defaultWechatThemeId } from '../../core/wechat-themes';
+import {
+  defaultWechatStyleConfig,
+  wechatStyleConfigSchema,
+  type WechatStyleConfig,
+} from '../../core/wechat-style';
 
 const STORAGE_KEY = 'social-copy-studio:draft:v1';
 
@@ -10,6 +15,7 @@ const draftSnapshotSchema = z.object({
   source: z.string(),
   themeId: z.string(),
   wechatThemeId: z.string().default(defaultWechatThemeId),
+  wechatStyle: wechatStyleConfigSchema.default(defaultWechatStyleConfig),
   channel: z.enum(['xiaohongshu', 'wechat']).default('xiaohongshu'),
 });
 
@@ -18,6 +24,7 @@ export interface DraftSnapshot {
   source: string;
   themeId: string;
   wechatThemeId: string;
+  wechatStyle: WechatStyleConfig;
   channel: 'xiaohongshu' | 'wechat';
 }
 
@@ -26,6 +33,7 @@ export const defaultDraft: DraftSnapshot = {
   source: defaultTemplate.source,
   themeId: defaultThemeId,
   wechatThemeId: defaultWechatThemeId,
+  wechatStyle: defaultWechatStyleConfig,
   channel: 'xiaohongshu',
 };
 

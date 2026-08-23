@@ -3,6 +3,7 @@ import { parseDocument } from './document';
 import { renderWechat } from './render-wechat';
 import { wechatThemeSchema } from './wechat-theme-schema';
 import { getWechatTheme } from './wechat-themes';
+import { wechatStylePresets } from './wechat-style';
 
 describe('renderWechat', () => {
   it('renders editorial headings, emphasis, quotes, lists, tables and code as inline-styled HTML', () => {
@@ -61,6 +62,28 @@ npm run build
     expect(() => wechatThemeSchema.parse({
       ...theme,
       palette: { ...theme.palette, accent: 'red;position:fixed' },
+    })).toThrow();
+  });
+
+  it('applies safe typography, spacing, accent, heading and code controls', () => {
+    const document = parseDocument('## 小标题\n\n一段正文。\n\n```ts\nconst ready = true;\n```');
+    const elegant = wechatStylePresets.find((preset) => preset.id === 'elegant')!;
+    const result = renderWechat(document, getWechatTheme('editorial-notes'), elegant.config);
+
+    expect(result.html).toContain('data-zhijian-heading="underline"');
+    expect(result.html).toContain("font-family:'Songti SC'");
+    expect(result.html).toContain('font-size:17px;line-height:2.05');
+    expect(result.html).toContain('color:#a35f6f');
+    expect(result.html).toContain('background-color:#f4ede3;color:#2d2723');
+  });
+
+  it('rejects injected custom style colors at the renderer boundary', () => {
+    const document = parseDocument('正文');
+    const classic = wechatStylePresets[0]!.config;
+
+    expect(() => renderWechat(document, getWechatTheme('editorial-notes'), {
+      ...classic,
+      accentColor: '#fff;position:fixed',
     })).toThrow();
   });
 });

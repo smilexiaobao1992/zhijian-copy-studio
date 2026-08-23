@@ -10,6 +10,11 @@ import type {
 } from 'mdast';
 import type { ContentDocument } from './document';
 import type { WechatTheme } from './wechat-theme-schema';
+import {
+  defaultWechatStyleConfig,
+  wechatStyleConfigSchema,
+  type WechatStyleConfig,
+} from './wechat-style';
 
 export interface WechatRenderWarning {
   code: 'empty' | 'raw-html' | 'image-placeholder' | 'unsafe-link';
@@ -39,10 +44,22 @@ interface RenderContext {
   sawRawHtml: boolean;
   sawImage: boolean;
   blockedLinks: number;
+  style: ResolvedWechatStyle;
 }
 
-const bodyFont = "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
-const displayFont = "'Songti SC', 'STSong', 'SimSun', serif";
+interface ResolvedWechatStyle {
+  bodyFont: string;
+  headingFont: string;
+  bodySize: number;
+  lineHeight: number;
+  headingStyle: WechatStyleConfig['headingStyle'];
+}
+
+const fontStacks: Record<WechatStyleConfig['fontFamily'], string> = {
+  sans: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+  serif: "'Songti SC', 'STSong', 'Noto Serif CJK SC', 'SimSun', serif",
+  mono: "'SFMono-Regular', 'Cascadia Code', 'Menlo', 'PingFang SC', monospace",
+};
 
 function escapeHtml(value: string): string {
   return value
@@ -118,8 +135,8 @@ function renderLink(node: Link, theme: WechatTheme, context: RenderContext): str
   return `<a href="${escapeHtml(url)}" style="color:${theme.palette.accent};text-decoration:underline;text-decoration-color:${theme.palette.line};text-underline-offset:3px;">${label}</a>`;
 }
 
-function paragraphStyle(theme: WechatTheme): string {
-  return `margin:0 0 18px;color:${theme.palette.ink};font-family:${bodyFont};font-size:16px;line-height:1.9;letter-spacing:0.01em;text-align:left;word-break:break-word;`;
+function paragraphStyle(theme: WechatTheme, context: RenderContext): string {
+  return `margin:0 0 ${context.style.lineHeight >= 2 ? 20 : 18}px;color:${theme.palette.ink};font-family:${context.style.bodyFont};font-size:${context.style.bodySize}px;line-height:${context.style.lineHeight};letter-spacing:0.01em;text-align:left;word-break:break-word;`;
 }
 
 function renderParagraph(
@@ -128,7 +145,7 @@ function renderParagraph(
   context: RenderContext,
 ): string {
   context.paragraphs += 1;
-  return `<p style="${paragraphStyle(theme)}">${renderPhrasing(node.children, theme, context)}</p>`;
+  return `<p style="${paragraphStyle(theme, context)}">${renderPhrasing(node.children, theme, context)}</p>`;
 }
 
 function renderHeading(
@@ -143,12 +160,32 @@ function renderHeading(
   const fontSize = node.depth === 1 ? 28 : node.depth === 2 ? 23 : 19;
   const margin = node.depth === 1 ? '6px 0 34px' : '34px 0 24px';
   const label = node.depth === 1 ? 'FEATURE' : theme.rules.headingLabel;
+  const heading = `<h${node.depth} style="margin:0;color:${theme.palette.ink};font-family:${context.style.headingFont};font-size:${fontSize}px;font-weight:700;line-height:1.36;letter-spacing:-0.02em;">${title}</h${node.depth}>`;
 
-  return `<section style="margin:${margin};">
-    <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${bodyFont};font-size:10px;font-weight:700;letter-spacing:0.18em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
-    <h${node.depth} style="margin:0;color:${theme.palette.ink};font-family:${displayFont};font-size:${fontSize}px;font-weight:700;line-height:1.36;letter-spacing:-0.02em;">${title}</h${node.depth}>
-    <span style="display:inline-block;width:30px;height:3px;margin-top:14px;background-color:${theme.palette.accent};vertical-align:top;"></span>
-  </section>`;
+  switch (context.style.headingStyle) {
+    case 'side':
+      return `<section style="margin:${margin};padding:2px 0 2px 14px;border-left:4px solid ${theme.palette.accent};">
+        ${heading}
+        <p style="margin:7px 0 0;color:${theme.palette.muted};font-family:${context.style.bodyFont};font-size:9px;font-weight:700;letter-spacing:0.16em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
+      </section>`;
+    case 'underline':
+      return `<section style="margin:${margin};padding-bottom:12px;border-bottom:1px solid ${theme.palette.line};">
+        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.18em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
+        ${heading}
+      </section>`;
+    case 'minimal':
+      return `<section style="margin:${margin};">
+        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.18em;line-height:1.4;">● ${String(context.headingIndex).padStart(2, '0')}</p>
+        ${heading}
+      </section>`;
+    case 'editorial':
+    default:
+      return `<section style="margin:${margin};">
+        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.18em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
+        ${heading}
+        <span style="display:inline-block;width:30px;height:3px;margin-top:14px;background-color:${theme.palette.accent};vertical-align:top;"></span>
+      </section>`;
+  }
 }
 
 function renderListItem(
@@ -170,7 +207,7 @@ function renderListItem(
 
   const nested = nestedChildren.map((child) => renderBlock(child, theme, context)).filter(Boolean).join('');
   return `<section style="margin:0 0 12px;padding:0;">
-    <p style="${paragraphStyle(theme)}margin-bottom:0;"><span style="display:inline-block;width:34px;color:${theme.palette.accent};font-family:${bodyFont};font-size:13px;font-weight:700;vertical-align:top;">${escapeHtml(marker)}</span><span>${primary}</span></p>
+    <p style="${paragraphStyle(theme, context)}margin-bottom:0;"><span style="display:inline-block;width:34px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:13px;font-weight:700;vertical-align:top;">${escapeHtml(marker)}</span><span>${primary}</span></p>
     ${nested ? `<section style="margin:8px 0 0 34px;">${nested}</section>` : ''}
   </section>`;
 }
@@ -194,8 +231,8 @@ function renderList(node: List, theme: WechatTheme, context: RenderContext): str
 function renderQuote(node: Blockquote, theme: WechatTheme, context: RenderContext): string {
   const content = node.children.map((child) => renderBlock(child, theme, context)).filter(Boolean).join('');
   return `<section style="margin:28px 0;padding:18px 18px 4px;background-color:${theme.palette.soft};border-top:1px solid ${theme.palette.line};border-bottom:1px solid ${theme.palette.line};">
-    <p style="margin:0 0 10px;color:${theme.palette.accent};font-family:${bodyFont};font-size:10px;font-weight:700;letter-spacing:0.16em;">${escapeHtml(theme.rules.quoteLabel)}</p>
-    <section style="color:${theme.palette.ink};font-family:${displayFont};font-size:17px;line-height:1.8;">${content}</section>
+    <p style="margin:0 0 10px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.16em;">${escapeHtml(theme.rules.quoteLabel)}</p>
+    <section style="color:${theme.palette.ink};font-family:${context.style.headingFont};font-size:${context.style.bodySize + 1}px;line-height:${context.style.lineHeight};">${content}</section>
   </section>`;
 }
 
@@ -203,7 +240,7 @@ function renderTable(node: Table, theme: WechatTheme, context: RenderContext): s
   const rows = node.children.map((row, rowIndex) => {
     const cells = row.children.map((cell) => {
       const content = renderPhrasing(cell.children, theme, context);
-      return `<td style="padding:10px 8px;border-bottom:1px solid ${theme.palette.line};color:${theme.palette.ink};font-family:${bodyFont};font-size:13px;line-height:1.6;${rowIndex === 0 ? `background-color:${theme.palette.soft};font-weight:700;` : ''}">${content}</td>`;
+      return `<td style="padding:10px 8px;border-bottom:1px solid ${theme.palette.line};color:${theme.palette.ink};font-family:${context.style.bodyFont};font-size:13px;line-height:1.6;${rowIndex === 0 ? `background-color:${theme.palette.soft};font-weight:700;` : ''}">${content}</td>`;
     }).join('');
     return `<tr>${cells}</tr>`;
   }).join('');
@@ -222,11 +259,11 @@ function renderBlock(node: RootContent, theme: WechatTheme, context: RenderConte
     case 'blockquote':
       return renderQuote(node, theme, context);
     case 'thematicBreak':
-      return `<p style="margin:34px 0;color:${theme.palette.accent};font-family:${displayFont};font-size:18px;letter-spacing:0.45em;text-align:center;">${escapeHtml(theme.rules.divider)}</p>`;
+      return `<p style="margin:34px 0;color:${theme.palette.accent};font-family:${context.style.headingFont};font-size:18px;letter-spacing:0.45em;text-align:center;">${escapeHtml(theme.rules.divider)}</p>`;
     case 'code': {
       const language = node.lang ? `CODE / ${node.lang.toUpperCase()}` : 'CODE';
       return `<section style="margin:24px 0;">
-        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${bodyFont};font-size:10px;font-weight:700;letter-spacing:0.14em;">${escapeHtml(language)}</p>
+        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.14em;">${escapeHtml(language)}</p>
         <pre style="margin:0;padding:16px 18px;border-radius:4px;background-color:${theme.palette.codeBackground};color:${theme.palette.codeText};font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.75;white-space:pre-wrap;word-break:break-all;"><code>${escapeHtml(node.value.trim())}</code></pre>
       </section>`;
     }
@@ -307,7 +344,22 @@ function containsRawHtml(node: unknown): boolean {
   return Array.isArray(candidate.children) && candidate.children.some(containsRawHtml);
 }
 
-export function renderWechat(document: ContentDocument, theme: WechatTheme): WechatRenderResult {
+export function renderWechat(
+  document: ContentDocument,
+  theme: WechatTheme,
+  requestedStyle: WechatStyleConfig = defaultWechatStyleConfig,
+): WechatRenderResult {
+  const styleConfig = wechatStyleConfigSchema.parse(requestedStyle);
+  const configuredTheme: WechatTheme = {
+    ...theme,
+    swatch: styleConfig.accentColor,
+    palette: {
+      ...theme.palette,
+      accent: styleConfig.accentColor,
+      codeBackground: styleConfig.codeTheme === 'ink' ? theme.palette.codeBackground : theme.palette.soft,
+      codeText: styleConfig.codeTheme === 'ink' ? theme.palette.codeText : theme.palette.ink,
+    },
+  };
   const context: RenderContext = {
     headingIndex: 0,
     headings: 0,
@@ -315,8 +367,15 @@ export function renderWechat(document: ContentDocument, theme: WechatTheme): Wec
     sawRawHtml: containsRawHtml(document.ast),
     sawImage: false,
     blockedLinks: 0,
+    style: {
+      bodyFont: fontStacks[styleConfig.fontFamily],
+      headingFont: fontStacks[styleConfig.fontFamily],
+      bodySize: styleConfig.bodySize,
+      lineHeight: styleConfig.lineHeight,
+      headingStyle: styleConfig.headingStyle,
+    },
   };
-  const blocks = document.ast.children.map((node) => renderBlock(node, theme, context)).filter(Boolean);
+  const blocks = document.ast.children.map((node) => renderBlock(node, configuredTheme, context)).filter(Boolean);
   const plainText = document.ast.children
     .map(plainBlock)
     .filter(Boolean)
@@ -325,7 +384,7 @@ export function renderWechat(document: ContentDocument, theme: WechatTheme): Wec
     .replace(/\n{3,}/gu, '\n\n')
     .trim();
   const html = plainText
-    ? `<section data-zhijian-theme="${escapeHtml(theme.id)}" style="box-sizing:border-box;margin:0;padding:28px 22px 34px;background-color:${theme.palette.paper};color:${theme.palette.ink};font-family:${bodyFont};font-size:16px;line-height:1.9;word-break:break-word;">${blocks.join('')}</section>`
+    ? `<section data-zhijian-theme="${escapeHtml(theme.id)}" data-zhijian-heading="${escapeHtml(styleConfig.headingStyle)}" style="box-sizing:border-box;margin:0;padding:28px 22px 34px;background-color:${configuredTheme.palette.paper};color:${configuredTheme.palette.ink};font-family:${context.style.bodyFont};font-size:${styleConfig.bodySize}px;line-height:${styleConfig.lineHeight};word-break:break-word;">${blocks.join('')}</section>`
     : '';
   const warnings: WechatRenderWarning[] = [];
 

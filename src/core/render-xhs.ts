@@ -10,9 +10,10 @@ import type {
 } from 'mdast';
 import type { ContentDocument } from './document';
 import type { XhsTheme } from './theme-schema';
+import { analyzeXhsSource, type XhsStructureAnalysis } from './xhs-organizer';
 
 export interface RenderWarning {
-  code: 'empty' | 'long-copy' | 'long-title' | 'many-topics' | 'raw-html';
+  code: 'empty' | 'long-copy' | 'long-title' | 'many-topics' | 'raw-html' | 'dense-copy' | 'unstructured-copy';
   severity: 'info' | 'warning';
   message: string;
 }
@@ -27,6 +28,12 @@ export interface RenderStats {
 export interface XhsRenderResult {
   channel: 'xiaohongshu';
   plainText: string;
+  sections: {
+    title: string;
+    body: string;
+    topics: string;
+  };
+  analysis: XhsStructureAnalysis;
   warnings: readonly RenderWarning[];
   stats: RenderStats;
 }
@@ -191,6 +198,43 @@ function containsRawHtml(node: unknown): boolean {
   return Array.isArray(candidate.children) && candidate.children.some(containsRawHtml);
 }
 
+function publishingText(children: readonly PhrasingContent[]): string {
+  return children.map((node) => {
+    switch (node.type) {
+      case 'text':
+      case 'inlineCode':
+        return node.value;
+      case 'strong':
+      case 'emphasis':
+      case 'delete':
+        return publishingText(node.children);
+      case 'break':
+        return '\n';
+      case 'link':
+        return publishingText(node.children).trim() || node.url;
+      case 'image':
+        return node.alt ?? '';
+      case 'footnoteReference':
+        return `［${node.identifier}］`;
+      default:
+        return '';
+    }
+  }).join('');
+}
+
+function extractTopics(value: string): { body: string; topics: string } {
+  const markerMatch = value.match(/(?:^|\n|\s)🏷️\s*(?:标签|话题)?\s*[：:]?\s*((?:#[^\s#]+\s*)+)$/u);
+  const hashtagLineMatch = value.match(/(?:^|\n)\s*((?:#[^\s#]+\s*)+)$/u);
+  const match = markerMatch ?? hashtagLineMatch;
+  if (!match || match.index === undefined) return { body: value.trim(), topics: '' };
+
+  const topics = match[1]?.match(/#[^\s#]+/gu)?.join(' ') ?? '';
+  return {
+    body: value.slice(0, match.index).trim(),
+    topics,
+  };
+}
+
 export function renderXiaohongshu(
   document: ContentDocument,
   theme: XhsTheme,
@@ -202,9 +246,11 @@ export function renderXiaohongshu(
     sawRawHtml: containsRawHtml(document.ast),
   };
 
-  const plainText = document.ast.children
-    .map((node) => renderBlock(node, theme, context))
-    .filter(Boolean)
+  const renderedBlocks = document.ast.children
+    .map((node) => ({ node, text: renderBlock(node, theme, context) }))
+    .filter((block) => Boolean(block.text));
+  const plainText = renderedBlocks
+    .map((block) => block.text)
     .join('\n\n')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
@@ -214,7 +260,25 @@ export function renderXiaohongshu(
   const firstLine = lines[0] ?? '';
   const characters = Array.from(plainText).length;
   const topics = plainText.match(/(?:^|\s)#[^\s#]+/gu)?.length ?? 0;
+  const analysis = analyzeXhsSource(document.source);
   const warnings: RenderWarning[] = [];
+
+  const firstBlock = renderedBlocks[0];
+  let title = '';
+  let bodyBlocks = renderedBlocks.map((block) => block.text);
+  if (firstBlock?.node.type === 'heading') {
+    title = publishingText(firstBlock.node.children).trim();
+    bodyBlocks = bodyBlocks.slice(1);
+  } else if (firstBlock?.node.type === 'paragraph') {
+    const [firstTitleLine = '', ...remainingSourceLines] = publishingText(firstBlock.node.children).split('\n');
+    const renderedLines = firstBlock.text.split('\n');
+    title = firstTitleLine.trim();
+    bodyBlocks = [
+      renderedLines.slice(remainingSourceLines.length > 0 ? 1 : renderedLines.length).join('\n').trim(),
+      ...bodyBlocks.slice(1),
+    ].filter(Boolean);
+  }
+  const separated = extractTopics(bodyBlocks.join('\n\n'));
 
   if (!plainText) {
     warnings.push({ code: 'empty', severity: 'info', message: '写一点内容后，这里会显示排版结果。' });
@@ -247,10 +311,30 @@ export function renderXiaohongshu(
       message: '原始 HTML 不会进入小红书纯文本输出。',
     });
   }
+  if (analysis.denseBlocks > 0) {
+    warnings.push({
+      code: 'dense-copy',
+      severity: 'info',
+      message: `检测到 ${analysis.denseBlocks} 个长段落，可以用“整理结构”自动拆分。`,
+    });
+  }
+  if (analysis.visualHeadings > 0 && analysis.markdownHeadings === 0) {
+    warnings.push({
+      code: 'unstructured-copy',
+      severity: 'info',
+      message: '文案里已有小标题符号，但还没有转换成主题结构。',
+    });
+  }
 
   return {
     channel: 'xiaohongshu',
     plainText,
+    sections: {
+      title,
+      body: separated.body,
+      topics: separated.topics,
+    },
+    analysis,
     warnings: uniqueWarnings(warnings),
     stats: {
       characters,

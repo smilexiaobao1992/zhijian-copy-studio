@@ -97,7 +97,16 @@
 .iconButton:active,
 .themeOption:active,
 .templateOption:active,
-.themeShortcut:active {
+.themeShortcut:active,
+.organizeButton:active,
+.copyParts button:active {
+  transform: scale(0.96);
+}
+
+.presetOption:active,
+.segmentedControls button:active,
+.colorGrid button:active,
+.headingStyleGrid button:active {
   transform: scale(0.96);
 }
 
@@ -269,6 +278,31 @@
   transition: color 120ms ease, background-color 120ms ease, transform 120ms ease;
 }
 
+.editorHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.organizeButton {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease, transform 120ms ease;
+}
+
+.organizeButton:disabled {
+  background: var(--color-paper-deep);
+  color: var(--color-faint);
+  cursor: default;
+}
+
 .themeDot,
 .themeSwatch {
   flex: 0 0 auto;
@@ -314,6 +348,33 @@
 .editorHint {
   margin-left: auto;
   color: var(--color-faint);
+}
+
+.structureStatus {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--color-accent-dark);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.structureStatus[data-ready="true"] {
+  color: var(--color-success);
+}
+
+.structureStatus button {
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: var(--color-paper-deep);
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 10px;
 }
 
 .previewStage {
@@ -415,6 +476,41 @@
   font-size: 13px;
   font-weight: 700;
   transition: background-color 120ms ease, transform 120ms ease, opacity 120ms ease;
+}
+
+.copyActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.copyParts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.copyParts button {
+  min-width: 56px;
+  min-height: 40px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--color-paper);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 10px;
+  transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease, transform 120ms ease;
+}
+
+.copyParts button[data-state="copied"] {
+  background: oklch(0.91 0.04 145);
+  color: var(--color-success);
+}
+
+.copyParts button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .copyButton[data-state="copied"] {
@@ -572,6 +668,281 @@
   margin: 0;
 }
 
+.styleWorkshop {
+  display: grid;
+  gap: var(--space-6);
+  padding-bottom: var(--space-5);
+}
+
+.workshopIntro {
+  margin: calc(var(--space-2) * -1) 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.controlGroup {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.controlGroup legend {
+  margin-bottom: var(--space-3);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.presetGrid {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.presetOption {
+  display: grid;
+  min-height: 80px;
+  grid-template-columns: 48px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--color-paper-deep);
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.presetOption[data-selected="true"] {
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 2px var(--color-ink), 0 2px 8px oklch(0.31 0.02 65 / 0.08);
+}
+
+.presetOption strong,
+.presetOption small {
+  grid-column: 2;
+}
+
+.presetOption strong {
+  align-self: end;
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.presetOption small {
+  align-self: start;
+  margin-top: 3px;
+  color: var(--color-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.presetSample {
+  display: grid;
+  width: 48px;
+  height: 54px;
+  grid-row: 1 / 3;
+  align-content: center;
+  gap: 6px;
+  padding: 9px 7px;
+  border-radius: var(--radius-1);
+  background: #fffdf8;
+  box-shadow: 0 2px 7px oklch(0.31 0.02 65 / 0.1);
+}
+
+.presetSample i {
+  display: block;
+  height: 3px;
+  background: #302a26;
+}
+
+.presetSample i:first-child {
+  width: 72%;
+  height: 5px;
+}
+
+.presetSample i:last-child {
+  width: 84%;
+}
+
+.presetSample[data-preset="classic"] i:first-child {
+  border-left: 8px solid #b44735;
+}
+
+.presetSample[data-preset="elegant"] i:first-child {
+  width: 100%;
+  border-bottom: 2px solid #a35f6f;
+  background: transparent;
+}
+
+.presetSample[data-preset="clean"] i:first-child {
+  border-left: 3px solid #2f6f68;
+  background: #302a26;
+}
+
+.segmentedControls,
+.compoundControls,
+.headingStyleGrid {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.segmentedControls {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.segmentedControls button,
+.headingStyleGrid button {
+  min-height: 42px;
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--color-paper-deep);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 120ms ease, box-shadow 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.segmentedControls button[data-selected="true"],
+.headingStyleGrid button[data-selected="true"] {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 2px var(--color-ink);
+}
+
+.compoundControls {
+  grid-template-columns: 1fr 1.25fr;
+}
+
+.compoundControls label {
+  display: grid;
+  gap: 6px;
+}
+
+.compoundControls label > span {
+  color: var(--color-muted);
+  font-size: 10px;
+}
+
+.compoundControls select {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 32px 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-2);
+  outline: 1px solid var(--color-line);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.colorGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+}
+
+.colorGrid button,
+.customColor {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 42px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--color-paper-deep);
+  cursor: pointer;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.colorGrid button > span {
+  width: 17px;
+  height: 17px;
+  border-radius: var(--radius-pill);
+}
+
+.colorGrid button[data-selected="true"] {
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 2px var(--color-ink);
+}
+
+.customColor {
+  overflow: hidden;
+}
+
+.customColor input {
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.customColor > span {
+  color: var(--color-muted);
+  font-size: 18px;
+  pointer-events: none;
+}
+
+.headingStyleGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.headingStyleGrid button {
+  display: grid;
+  min-height: 62px;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.headingStyleGrid button > span {
+  display: grid;
+  width: 28px;
+  gap: 4px;
+}
+
+.headingStyleGrid i {
+  display: block;
+  height: 3px;
+  background: currentColor;
+}
+
+.headingStyleGrid i:last-child {
+  width: 70%;
+  height: 2px;
+  opacity: 0.45;
+}
+
+.headingStyleGrid span[data-style="editorial"] i:first-child {
+  border-bottom: 2px solid var(--color-accent);
+}
+
+.headingStyleGrid span[data-style="side"] {
+  padding-left: 5px;
+  border-left: 3px solid var(--color-accent);
+}
+
+.headingStyleGrid span[data-style="underline"] {
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-accent);
+}
+
+.headingStyleGrid span[data-style="minimal"] i:last-child {
+  display: none;
+}
+
 .visuallyHidden {
   position: absolute;
   width: 1px;
@@ -587,6 +958,7 @@
   .railButton:hover,
   .railLink:hover,
   .themeShortcut:hover,
+  .organizeButton:hover:not(:disabled),
   .iconButton:hover,
   .themeOption:hover,
   .templateOption:hover {
@@ -594,8 +966,22 @@
     color: var(--color-ink);
   }
 
+  .presetOption:hover,
+  .segmentedControls button:hover,
+  .headingStyleGrid button:hover,
+  .colorGrid button:hover,
+  .customColor:hover {
+    background: var(--color-paper);
+    box-shadow: inset 0 0 0 1px var(--color-line);
+  }
+
   .copyButton:hover:not(:disabled) {
     background: var(--color-accent-dark);
+  }
+
+  .copyParts button:hover:not(:disabled) {
+    background: var(--color-paper-deep);
+    color: var(--color-ink);
   }
 }
 
@@ -626,9 +1012,21 @@
   .copyButton {
     width: 100%;
   }
+
+  .copyActions {
+    width: 100%;
+  }
+
+  .copyActions .copyButton {
+    width: auto;
+  }
+
+  .copyParts {
+    flex: 1 1 auto;
+  }
 }
 
-@media (min-width: 481px) and (max-width: 800px) {
+@media (min-width: 641px) and (max-width: 800px) {
   .appHeader {
     position: sticky;
     top: 0;
@@ -738,9 +1136,17 @@
     min-width: 0;
     min-height: 40px;
   }
+
+  .copyActions {
+    display: grid;
+  }
+
+  .copyActions .copyButton {
+    width: 100%;
+  }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .appHeader {
     position: sticky;
     top: 0;
@@ -832,6 +1238,14 @@
     font-size: 18px;
   }
 
+  .themeShortcut {
+    display: none;
+  }
+
+  .organizeButton {
+    min-height: 38px;
+  }
+
   .editor {
     padding: var(--space-6) var(--space-5) var(--space-8);
     font-size: 14px;
@@ -856,6 +1270,23 @@
     bottom: 0;
     min-height: 82px;
     padding: var(--space-3) var(--space-4);
+  }
+
+  .copyActions {
+    width: 100%;
+  }
+
+  .copyButton {
+    min-width: 104px;
+  }
+
+  .copyParts {
+    flex: 1 1 auto;
+  }
+
+  .copyParts button {
+    min-width: 0;
+    padding: 0 5px;
   }
 
   .previewStatus {

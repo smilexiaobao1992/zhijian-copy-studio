@@ -25,6 +25,8 @@
 
 主题定义位于 `src/core/wechat-themes.ts`，必须通过 `wechatThemeSchema` 校验。公众号主题只提供颜色与标签数据，不能拼接标签、事件属性或任意 CSS。
 
+样式工坊配置位于 `src/core/wechat-style.ts`，字体、字号、行距、标题和代码样式必须使用受限枚举，主题色必须是六位十六进制值。新增控件时应继续由 `render-wechat.ts` 掌握最终标签与内联样式，不允许把用户输入直接拼进 CSS。
+
 提交前请确认：
 
 - 用户文字始终经过 HTML 转义。

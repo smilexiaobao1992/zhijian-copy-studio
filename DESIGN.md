@@ -62,7 +62,7 @@ Depth comes from background lightness steps. Only the reading sheet uses a restr
 - Above 1100px: full three-column workspace.
 - Between 801px and 1100px: narrower preview and compact labels.
 - Between 481px and 800px: compact side-by-side editor and preview.
-- At 480px and below: one content pane, brand seal, channel switch, and edit/preview switch share the header; the bottom tool rail keeps safe-area padding.
+- At 640px and below: one content pane, brand seal, channel switch, and edit/preview switch share the header; the bottom tool rail keeps safe-area padding.
 - All touch targets remain at least 40px.
 
 ## 9. Agent prompt guide

@@ -2,11 +2,16 @@ import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } fr
 import { parseDocument } from '../../core/document';
 import { renderWechat } from '../../core/render-wechat';
 import { renderXiaohongshu } from '../../core/render-xhs';
+import { organizeXhsSource } from '../../core/xhs-organizer';
 import { getTemplate } from '../../core/templates';
 import { getTheme } from '../../core/themes';
 import { getWechatTheme } from '../../core/wechat-themes';
+import {
+  getWechatStyleName,
+  type WechatStyleConfig,
+} from '../../core/wechat-style';
 import { copyPlainText, copyRichText } from './clipboard';
-import { PreviewPane } from './PreviewPane';
+import { PreviewPane, type CopyTarget } from './PreviewPane';
 import { defaultDraft, loadDraft, saveDraft } from './storage';
 import { ToolDrawer, type DrawerId } from './ToolDrawer';
 import styles from './EditorApp.module.css';
@@ -17,6 +22,7 @@ interface EditorState {
   source: string;
   themeId: string;
   wechatThemeId: string;
+  wechatStyle: WechatStyleConfig;
   channel: ChannelId;
   activeDrawer: DrawerId | null;
   mobileView: 'edit' | 'preview';
@@ -26,6 +32,8 @@ type EditorAction =
   | { type: 'source'; source: string }
   | { type: 'theme'; themeId: string }
   | { type: 'wechat-theme'; themeId: string }
+  | { type: 'wechat-style'; style: WechatStyleConfig }
+  | { type: 'wechat-style-property'; property: keyof WechatStyleConfig; value: WechatStyleConfig[keyof WechatStyleConfig] }
   | { type: 'channel'; channel: ChannelId }
   | { type: 'drawer'; drawer: DrawerId | null }
   | { type: 'mobile-view'; view: 'edit' | 'preview' }
@@ -39,6 +47,10 @@ function reducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, themeId: action.themeId, activeDrawer: null };
     case 'wechat-theme':
       return { ...state, wechatThemeId: action.themeId, activeDrawer: null };
+    case 'wechat-style':
+      return { ...state, wechatStyle: action.style };
+    case 'wechat-style-property':
+      return { ...state, wechatStyle: { ...state.wechatStyle, [action.property]: action.value } };
     case 'channel':
       return { ...state, channel: action.channel, activeDrawer: null };
     case 'drawer':
@@ -56,6 +68,7 @@ function initialState(): EditorState {
     source: draft.source,
     themeId: draft.themeId,
     wechatThemeId: draft.wechatThemeId,
+    wechatStyle: draft.wechatStyle,
     channel: draft.channel,
     activeDrawer: null,
     mobileView: 'edit',
@@ -72,22 +85,26 @@ export function EditorApp() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved');
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [copyTarget, setCopyTarget] = useState<CopyTarget>('all');
+  const [organizeUndo, setOrganizeUndo] = useState<{ source: string; summary: string } | null>(null);
   const [previewMotion, setPreviewMotion] = useState(false);
   const copyTimerRef = useRef<number | null>(null);
   const deferredSource = useDeferredValue(state.source);
   const xhsTheme = useMemo(() => getTheme(state.themeId), [state.themeId]);
   const wechatTheme = useMemo(() => getWechatTheme(state.wechatThemeId), [state.wechatThemeId]);
+  const wechatStyleName = useMemo(() => getWechatStyleName(state.wechatStyle), [state.wechatStyle]);
   const document = useMemo(() => parseDocument(deferredSource), [deferredSource]);
   const xhsResult = useMemo(
     () => state.channel === 'xiaohongshu' ? renderXiaohongshu(document, xhsTheme) : null,
     [document, state.channel, xhsTheme],
   );
   const wechatResult = useMemo(
-    () => state.channel === 'wechat' ? renderWechat(document, wechatTheme) : null,
-    [document, state.channel, wechatTheme],
+    () => state.channel === 'wechat' ? renderWechat(document, wechatTheme, state.wechatStyle) : null,
+    [document, state.channel, state.wechatStyle, wechatTheme],
   );
   const result = xhsResult ?? wechatResult!;
   const activeTheme = state.channel === 'xiaohongshu' ? xhsTheme : wechatTheme;
+  const activeSwatch = state.channel === 'wechat' ? state.wechatStyle.accentColor : activeTheme.swatch;
 
   useEffect(() => {
     setSaveState('saving');
@@ -98,6 +115,7 @@ export function EditorApp() {
           source: state.source,
           themeId: state.themeId,
           wechatThemeId: state.wechatThemeId,
+          wechatStyle: state.wechatStyle,
           channel: state.channel,
         });
         setSaveState('saved');
@@ -107,21 +125,31 @@ export function EditorApp() {
     }, 420);
 
     return () => window.clearTimeout(timer);
-  }, [state.channel, state.source, state.themeId, state.wechatThemeId]);
+  }, [state.channel, state.source, state.themeId, state.wechatStyle, state.wechatThemeId]);
 
   useEffect(() => () => {
     if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
   }, []);
 
-  const documentName = result.plainText.split('\n')[0]?.replace(/^\S+\s*/u, '').trim() || '未命名草稿';
+  const documentName = xhsResult?.sections.title
+    || result.plainText.split('\n')[0]?.replace(/^\S+\s*/u, '').trim()
+    || '未命名草稿';
 
-  async function handleCopy() {
+  async function handleCopy(target: CopyTarget = 'all') {
     try {
       if (wechatResult) {
         await copyRichText(wechatResult.html, wechatResult.plainText);
-      } else {
-        await copyPlainText(result.plainText);
+      } else if (xhsResult) {
+        const text = target === 'title'
+          ? xhsResult.sections.title
+          : target === 'body'
+            ? xhsResult.sections.body
+            : target === 'topics'
+              ? xhsResult.sections.topics
+              : xhsResult.plainText;
+        await copyPlainText(text);
       }
+      setCopyTarget(target);
       setCopyState('copied');
     } catch {
       setCopyState('error');
@@ -134,6 +162,7 @@ export function EditorApp() {
     if (channel === state.channel) return;
     if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
     setCopyState('idle');
+    setCopyTarget('all');
     setPreviewMotion(true);
     dispatch({ type: 'channel', channel });
   }
@@ -141,7 +170,22 @@ export function EditorApp() {
   function selectTemplate(templateId: string) {
     const accepted = window.confirm('应用模板会替换当前草稿，是否继续？');
     if (!accepted) return;
+    setOrganizeUndo(null);
     dispatch({ type: 'template', source: getTemplate(templateId).source });
+  }
+
+  function organizeSource() {
+    const organized = organizeXhsSource(state.source);
+    if (!organized.changed) return;
+    setOrganizeUndo({ source: state.source, summary: organized.summary });
+    setPreviewMotion(true);
+    dispatch({ type: 'source', source: organized.source });
+  }
+
+  function undoOrganize() {
+    if (!organizeUndo) return;
+    dispatch({ type: 'source', source: organizeUndo.source });
+    setOrganizeUndo(null);
   }
 
   function toggleDrawer(drawer: DrawerId) {
@@ -223,12 +267,19 @@ export function EditorApp() {
             activeDrawer={state.activeDrawer}
             channel={state.channel}
             selectedThemeId={activeTheme.id}
+            wechatStyle={state.wechatStyle}
             onClose={() => dispatch({ type: 'drawer', drawer: null })}
             onSelectTheme={(themeId) => dispatch({
               type: state.channel === 'xiaohongshu' ? 'theme' : 'wechat-theme',
               themeId,
             })}
             onSelectTemplate={selectTemplate}
+            onApplyWechatStyle={(style) => dispatch({ type: 'wechat-style', style })}
+            onUpdateWechatStyle={(property, value) => dispatch({
+              type: 'wechat-style-property',
+              property,
+              value,
+            })}
           />
         ) : null}
 
@@ -238,10 +289,23 @@ export function EditorApp() {
               <span className={styles.eyebrow}>原始文案</span>
               <h1 id="editor-heading">Markdown 编辑器</h1>
             </div>
-            <button className={styles.themeShortcut} type="button" onClick={() => toggleDrawer('themes')}>
-              <span className={styles.themeDot} style={{ backgroundColor: activeTheme.swatch }} aria-hidden="true" />
-              主题 · {activeTheme.name}
-            </button>
+            <div className={styles.editorHeaderActions}>
+              {xhsResult ? (
+                <button
+                  className={styles.organizeButton}
+                  data-ready={!xhsResult.analysis.canOrganize}
+                  type="button"
+                  onClick={organizeSource}
+                  disabled={!xhsResult.analysis.canOrganize}
+                >
+                  {xhsResult.analysis.canOrganize ? '整理结构' : '结构已清楚'}
+                </button>
+              ) : null}
+              <button className={styles.themeShortcut} type="button" onClick={() => toggleDrawer('themes')}>
+                <span className={styles.themeDot} style={{ backgroundColor: activeSwatch }} aria-hidden="true" />
+                {state.channel === 'wechat' ? `样式 · ${wechatStyleName}` : `主题 · ${activeTheme.name}`}
+              </button>
+            </div>
           </header>
 
           <label className={styles.visuallyHidden} htmlFor="source-editor">输入文案</label>
@@ -250,14 +314,26 @@ export function EditorApp() {
             id="source-editor"
             value={state.source}
             spellCheck="false"
-            onChange={(event) => dispatch({ type: 'source', source: event.target.value })}
+            onChange={(event) => {
+              setOrganizeUndo(null);
+              dispatch({ type: 'source', source: event.target.value });
+            }}
           />
 
           <footer className={styles.editorFooter}>
             <span>{result.stats.characters} 字</span>
             <span>{result.stats.headings} 个标题</span>
             <span>{result.stats.topics} 个话题</span>
-            <span className={styles.editorHint}>支持标题、列表、引用、重点和代码</span>
+            {xhsResult ? (
+              <span className={styles.structureStatus} data-ready={!xhsResult.analysis.canOrganize}>
+                {organizeUndo ? organizeUndo.summary : xhsResult.analysis.message}
+                {organizeUndo ? (
+                  <button type="button" onClick={undoOrganize}>撤销</button>
+                ) : null}
+              </span>
+            ) : (
+              <span className={styles.editorHint}>支持标题、列表、引用、重点和代码</span>
+            )}
           </footer>
         </section>
 
@@ -266,7 +342,10 @@ export function EditorApp() {
             channel="wechat"
             result={wechatResult}
             theme={wechatTheme}
+            styleName={wechatStyleName}
+            styleColor={state.wechatStyle.accentColor}
             copyState={copyState}
+            copyTarget={copyTarget}
             onCopy={handleCopy}
             animate={previewMotion}
           />
@@ -276,6 +355,7 @@ export function EditorApp() {
             result={xhsResult}
             theme={xhsTheme}
             copyState={copyState}
+            copyTarget={copyTarget}
             onCopy={handleCopy}
             animate={previewMotion}
           />
