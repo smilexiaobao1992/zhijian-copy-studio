@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseDocument } from './document';
-import { renderXiaohongshu } from './render-xhs';
+import { XHS_CHARACTER_LIMIT, renderXiaohongshu } from './render-xhs';
 import { getTheme, xhsThemes } from './themes';
 
 describe('renderXiaohongshu', () => {
@@ -45,6 +45,20 @@ describe('renderXiaohongshu', () => {
     expect(result.analysis.canOrganize).toBe(true);
     expect(result.warnings.map((warning) => warning.code)).toContain('dense-copy');
     expect(result.warnings.map((warning) => warning.code)).toContain('unstructured-copy');
+  });
+
+  it('reports the exact amount above the 1000-character publishing limit', () => {
+    const result = renderXiaohongshu(
+      parseDocument('字'.repeat(XHS_CHARACTER_LIMIT + 1)),
+      getTheme('clear-note'),
+    );
+
+    expect(result.stats.characters).toBe(XHS_CHARACTER_LIMIT + 1);
+    expect(result.warnings).toContainEqual(expect.objectContaining({
+      code: 'long-copy',
+      severity: 'warning',
+      message: expect.stringContaining('精简 1 字'),
+    }));
   });
 
   it('extracts a labelled topic tail from the end of a body paragraph', () => {

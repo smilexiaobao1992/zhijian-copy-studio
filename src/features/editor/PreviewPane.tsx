@@ -1,5 +1,5 @@
 import type { WechatRenderResult } from '../../core/render-wechat';
-import type { XhsRenderResult } from '../../core/render-xhs';
+import { XHS_CHARACTER_LIMIT, type XhsRenderResult } from '../../core/render-xhs';
 import type { WechatTheme } from '../../core/wechat-theme-schema';
 import type { XhsTheme } from '../../core/theme-schema';
 import styles from './EditorApp.module.css';
@@ -25,11 +25,16 @@ type PreviewPaneProps = {
 export function PreviewPane(props: PreviewPaneProps) {
   const { channel, result, theme, copyState, copyTarget, onCopy, animate } = props;
   const isWechat = channel === 'wechat';
+  const isXhsOverLimit = !isWechat && result.stats.characters > XHS_CHARACTER_LIMIT;
   const copyLabel = copyState === 'copied'
     ? isWechat ? '已复制公众号富文本' : copyTarget === 'all' ? '已复制全部' : '复制全部'
     : copyState === 'error'
       ? '复制失败，请重试'
-      : isWechat ? '复制公众号富文本' : '复制全部';
+      : isWechat
+        ? '复制公众号富文本'
+        : isXhsOverLimit
+          ? `超出 ${result.stats.characters - XHS_CHARACTER_LIMIT} 字`
+          : '复制全部';
   const previewTitle = isWechat ? '微信公众号富文本' : '小红书纯文本';
   const previewLabel = isWechat ? '排版后的公众号文章' : '排版后的正文';
   const readyMessage = isWechat
@@ -93,17 +98,23 @@ export function PreviewPane(props: PreviewPaneProps) {
                 ['title', '标题', props.result.sections.title],
                 ['body', '正文', props.result.sections.body],
                 ['topics', '话题', props.result.sections.topics],
-              ] as const).map(([target, label, value]) => (
-                <button
-                  type="button"
-                  data-state={copyState === 'copied' && copyTarget === target ? 'copied' : 'idle'}
-                  key={target}
-                  onClick={() => onCopy(target)}
-                  disabled={!value}
-                >
-                  {copyState === 'copied' && copyTarget === target ? `已复制${label}` : `复制${label}`}
-                </button>
-              ))}
+              ] as const).map(([target, label, value]) => {
+                const isSectionOverLimit = Array.from(value).length > XHS_CHARACTER_LIMIT;
+                return (
+                  <button
+                    type="button"
+                    data-state={copyState === 'copied' && copyTarget === target ? 'copied' : 'idle'}
+                    key={target}
+                    onClick={() => onCopy(target)}
+                    disabled={!value || isSectionOverLimit}
+                    title={isSectionOverLimit ? `${label}超过 1000 字，请先精简` : undefined}
+                  >
+                    {copyState === 'copied' && copyTarget === target
+                      ? `已复制${label}`
+                      : isSectionOverLimit ? `${label}超限` : `复制${label}`}
+                  </button>
+                );
+              })}
             </div>
           ) : null}
           <button
@@ -111,7 +122,8 @@ export function PreviewPane(props: PreviewPaneProps) {
             data-state={copyState === 'copied' && (isWechat || copyTarget === 'all') ? 'copied' : copyState}
             type="button"
             onClick={() => onCopy('all')}
-            disabled={!result.plainText}
+            disabled={!result.plainText || isXhsOverLimit}
+            title={isXhsOverLimit ? '请将小红书发布文本精简到 1000 字以内' : undefined}
           >
             {copyLabel}
           </button>

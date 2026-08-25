@@ -99,7 +99,13 @@
 .templateOption:active,
 .themeShortcut:active,
 .organizeButton:active,
-.copyParts button:active {
+.copyParts button:active,
+.createNoteButton:active,
+.noteSelect:active,
+.noteActions button:active,
+.backupActions button:active,
+.renameForm button:active,
+.confirmActions button:active {
   transform: scale(0.96);
 }
 
@@ -140,6 +146,16 @@
 }
 
 .saveStatus[data-state="error"] span {
+  background: var(--color-accent);
+}
+
+.saveStatus[data-state="conflict"],
+.saveStatus[data-state="recovery"] {
+  color: var(--color-accent-dark);
+}
+
+.saveStatus[data-state="conflict"] span,
+.saveStatus[data-state="recovery"] span {
   background: var(--color-accent);
 }
 
@@ -343,6 +359,11 @@
   color: var(--color-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+}
+
+.characterCount[data-over-limit="true"] {
+  color: var(--color-accent-dark);
+  font-weight: 800;
 }
 
 .editorHint {
@@ -634,6 +655,292 @@
   color: var(--color-muted);
   font-size: 11px;
   line-height: 1.6;
+}
+
+.noteDrawer {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.noteDrawer .drawerHeader {
+  flex: 0 0 auto;
+  margin-bottom: var(--space-4);
+}
+
+.noteDrawer .drawerHeader h2 small {
+  margin-left: 5px;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.createNoteButton {
+  display: grid;
+  width: 100%;
+  min-height: 64px;
+  flex: 0 0 auto;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--color-accent);
+  color: var(--color-paper);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.createNoteButton > span:first-child {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: 20px;
+}
+
+.createNoteButton strong,
+.createNoteButton small {
+  display: block;
+}
+
+.createNoteButton strong {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.createNoteButton small {
+  margin-top: 3px;
+  opacity: 0.72;
+  font-size: 10px;
+}
+
+.noteSearch {
+  display: grid;
+  min-height: 42px;
+  flex: 0 0 auto;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-3) 0;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-2);
+  background: var(--color-paper-deep);
+  color: var(--color-faint);
+}
+
+.noteSearch:focus-within {
+  border-color: var(--color-accent-dark);
+  background: var(--color-paper);
+}
+
+.noteSearch input {
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.noteSearch input::placeholder {
+  color: var(--color-faint);
+}
+
+.noteList {
+  display: grid;
+  min-height: 96px;
+  flex: 1 1 auto;
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: var(--space-2);
+  padding-right: 3px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.noteCard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--radius-2);
+  background: var(--color-paper-deep);
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.noteCard[data-active="true"] {
+  border-color: color-mix(in oklch, var(--color-accent) 48%, var(--color-line));
+  background: var(--color-paper);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.noteSelect {
+  display: grid;
+  width: 100%;
+  min-height: 92px;
+  gap: 6px;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 120ms ease;
+}
+
+.noteHeading,
+.noteMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.noteHeading strong {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noteHeading i {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-paper);
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.noteExcerpt {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noteMeta {
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.noteActions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--color-line);
+}
+
+.noteActions button,
+.backupActions button,
+.renameForm button {
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 10px;
+  transition: background-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.noteActions button + button {
+  border-left: 1px solid var(--color-line);
+}
+
+.noteActions button:last-child {
+  color: var(--color-accent-dark);
+}
+
+.renameForm {
+  display: grid;
+  min-height: 70px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.renameForm input {
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-accent-dark);
+  border-radius: var(--radius-1);
+  outline: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.renameForm button {
+  min-height: 40px;
+  padding: 0 var(--space-2);
+}
+
+.noteEmpty {
+  display: grid;
+  min-height: 108px;
+  place-items: center;
+  border: 1px dashed var(--color-line);
+  border-radius: var(--radius-2);
+  color: var(--color-faint);
+  font-size: 11px;
+}
+
+.backupPanel {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-line);
+  background: var(--color-paper);
+}
+
+.backupPanel strong {
+  font-family: var(--font-display);
+  font-size: 12px;
+}
+
+.backupPanel p {
+  margin: 3px 0 0;
+  color: var(--color-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.backupActions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.backupActions button {
+  min-height: 40px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-1);
+  background: var(--color-paper-deep);
+}
+
+.backupPanel .backupMessage {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-accent-dark);
 }
 
 .guide {
@@ -943,6 +1250,142 @@
   display: none;
 }
 
+.confirmDialog {
+  width: min(92vw, 470px);
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+}
+
+.confirmDialog::backdrop {
+  background: oklch(0.245 0.018 58 / 0.54);
+  animation: dialog-backdrop-in 160ms ease-out both;
+}
+
+.confirmSurface {
+  position: relative;
+  max-height: calc(100dvh - 32px);
+  padding: var(--space-7);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-3);
+  background: var(--color-paper);
+  box-shadow: 0 28px 72px oklch(0.2 0.02 58 / 0.28), 0 3px 12px oklch(0.2 0.02 58 / 0.16);
+  animation: dialog-surface-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.confirmSurface::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: var(--color-ink);
+  content: '';
+}
+
+.confirmSurface[data-tone="danger"]::before {
+  background: var(--color-accent);
+}
+
+.confirmHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.confirmHeading .eyebrow {
+  margin: 0;
+}
+
+.confirmMarker {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.confirmSurface[data-tone="danger"] .confirmMarker {
+  background: var(--color-accent);
+}
+
+.confirmSurface h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  line-height: 1.28;
+  text-wrap: balance;
+}
+
+.confirmSurface > p {
+  max-width: 42ch;
+  margin: var(--space-3) 0 var(--space-6);
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+.confirmActions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: var(--space-2);
+}
+
+.confirmActions button {
+  min-height: 46px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--color-paper-deep);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.confirmActions button:last-child {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.confirmActions button[data-tone="danger"] {
+  background: var(--color-accent);
+}
+
+@keyframes dialog-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-surface-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .visuallyHidden {
   position: absolute;
   width: 1px;
@@ -964,6 +1407,30 @@
   .templateOption:hover {
     background: var(--color-paper-deep);
     color: var(--color-ink);
+  }
+
+  .createNoteButton:hover {
+    background: var(--color-accent-dark);
+  }
+
+  .noteActions button:hover,
+  .backupActions button:hover,
+  .renameForm button:hover {
+    background: var(--color-paper-deep);
+    color: var(--color-ink);
+  }
+
+  .confirmActions button:first-child:hover {
+    background: var(--color-rail);
+    color: var(--color-ink);
+  }
+
+  .confirmActions button:last-child:hover {
+    background: var(--color-muted);
+  }
+
+  .confirmActions button[data-tone="danger"]:hover {
+    background: var(--color-accent-dark);
   }
 
   .presetOption:hover,
@@ -1206,7 +1673,7 @@
   .railPrimary {
     display: grid;
     width: 100%;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: var(--space-1);
     padding: 0;
   }
@@ -1305,10 +1772,27 @@
     border-radius: var(--radius-3) var(--radius-3) 0 0;
     box-shadow: 0 -16px 38px oklch(0.31 0.02 65 / 0.16);
   }
+
+  .confirmDialog {
+    width: calc(100vw - 32px);
+  }
+
+  .confirmSurface {
+    padding: var(--space-6) var(--space-5) var(--space-5);
+  }
+
+  .confirmSurface h2 {
+    font-size: 22px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .readingSheet[data-animate="true"] {
+    animation: none;
+  }
+
+  .confirmDialog::backdrop,
+  .confirmSurface {
     animation: none;
   }
 }

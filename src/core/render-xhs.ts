@@ -44,6 +44,8 @@ export interface XhsRenderResult {
   stats: RenderStats;
 }
 
+export const XHS_CHARACTER_LIMIT = 1_000;
+
 interface RenderContext {
   headingIndex: number;
   headings: number;
@@ -332,11 +334,11 @@ export function renderXiaohongshu(
   if (!plainText) {
     warnings.push({ code: 'empty', severity: 'info', message: '写一点内容后，这里会显示排版结果。' });
   }
-  if (characters > 1000) {
+  if (characters > XHS_CHARACTER_LIMIT) {
     warnings.push({
       code: 'long-copy',
-      severity: 'info',
-      message: '正文已经较长，发布前建议再次检查段落密度和平台限制。',
+      severity: 'warning',
+      message: `已超过小红书 1000 字限制，请精简 ${characters - XHS_CHARACTER_LIMIT} 字后再复制全部。`,
     });
   }
   if (Array.from(firstLine).length > 28) {

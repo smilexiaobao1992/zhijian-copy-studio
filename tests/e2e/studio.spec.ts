@@ -36,6 +36,35 @@ test('formats Markdown and switches themes', async ({ page }, testInfo) => {
   await expect(page.getByLabel('排版后的正文')).toContainText('▌ 安装方法');
 });
 
+test('creates, switches and restores independent local notes', async ({ page }) => {
+  await page.goto('/studio/');
+  const editor = page.getByLabel('输入文案');
+  await editor.fill('# 第一篇\n\n只属于第一篇的内容。');
+
+  await page.getByRole('button', { name: '笔记', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /笔记库/ })).toBeVisible();
+  await page.getByRole('button', { name: /新建笔记/ }).click();
+  await expect(editor).toHaveValue('');
+  await editor.fill('# 第二篇\n\n只属于第二篇的内容。');
+
+  await page.getByRole('button', { name: '笔记', exact: true }).click();
+  await page.getByRole('button', { name: /第一篇/ }).click();
+  await expect(editor).toHaveValue(/只属于第一篇的内容/);
+  await page.locator('article[data-active="true"]').getByRole('button', { name: '删除' }).click();
+  const confirmDialog = page.getByRole('dialog');
+  await expect(confirmDialog.getByRole('heading', { name: '删除“第一篇”？' })).toBeVisible();
+  await confirmDialog.getByRole('button', { name: '取消' }).click();
+  await expect(confirmDialog).toBeHidden();
+  await page.getByRole('button', { name: '关闭笔记库' }).click();
+
+  await expect.poll(() => page.evaluate(() => {
+    const value = localStorage.getItem('social-copy-studio:workspace:v2');
+    return value ? JSON.parse(value).notes.length : 0;
+  })).toBe(2);
+  await page.reload();
+  await expect(editor).toHaveValue(/只属于第一篇的内容/);
+});
+
 test('organizes dense Xiaohongshu copy and copies publishing sections separately', async ({ page, context }, testInfo) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/studio/');
@@ -60,6 +89,71 @@ test('organizes dense Xiaohongshu copy and copies publishing sections separately
   }
   await page.getByRole('button', { name: '撤销' }).click();
   await expect(editor).toHaveValue(original);
+});
+
+test('blocks copying a Xiaohongshu post above 1000 characters', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only publishing limit detail');
+  await page.goto('/studio/');
+  await page.getByLabel('输入文案').fill('字'.repeat(1001));
+
+  await expect(page.getByText('1001 / 1000 字')).toBeVisible();
+  await expect(page.getByText(/精简 1 字后再复制全部/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '超出 1 字' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '标题超限' })).toBeDisabled();
+});
+
+test('rejects an oversized backup before importing it', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only file boundary detail');
+  await page.goto('/studio/');
+  await page.getByRole('button', { name: '笔记', exact: true }).click();
+  await page.locator('input[type="file"]').evaluate((input) => {
+    const file = new File([new Uint8Array(5_000_001)], 'too-large.json', { type: 'application/json' });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    (input as HTMLInputElement).files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
+  await expect(page.getByText('备份文件不能超过 5 MB')).toBeVisible();
+});
+
+test('prevents two tabs from silently overwriting the same workspace revision', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only cross-tab detail');
+  await page.goto('/studio/');
+  await expect.poll(() => page.evaluate(
+    () => localStorage.getItem('social-copy-studio:workspace:v2') !== null,
+  )).toBe(true);
+
+  const secondPage = await context.newPage();
+  await secondPage.goto('/studio/');
+  await Promise.all([
+    page.getByLabel('输入文案').fill('# 标签页 A\n\nA 的内容'),
+    secondPage.getByLabel('输入文案').fill('# 标签页 B\n\nB 的内容'),
+  ]);
+
+  await expect.poll(async () => Number(await page.getByText('其他标签页有更新').isVisible())
+    + Number(await secondPage.getByText('其他标签页有更新').isVisible())).toBe(1);
+  const persistedSource = await page.evaluate(() => {
+    const value = localStorage.getItem('social-copy-studio:workspace:v2');
+    return value ? JSON.parse(value).notes[0].source : '';
+  });
+  expect(['# 标签页 A\n\nA 的内容', '# 标签页 B\n\nB 的内容']).toContain(persistedSource);
+  await secondPage.close();
+});
+
+test('preserves a corrupt workspace instead of auto-saving over it', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only recovery detail');
+  await page.addInitScript(() => {
+    localStorage.setItem('social-copy-studio:workspace:v2', '{broken');
+  });
+  await page.goto('/studio/');
+
+  await expect(page.getByText('本地数据异常，请导入备份')).toBeVisible();
+  await page.getByLabel('输入文案').fill('# 临时输入');
+  await page.waitForTimeout(600);
+  await expect.poll(() => page.evaluate(
+    () => localStorage.getItem('social-copy-studio:workspace:v2'),
+  )).toBe('{broken');
 });
 
 test('switches to the editorial WeChat renderer', async ({ page }, testInfo) => {

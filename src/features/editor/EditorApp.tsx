@@ -1,81 +1,104 @@
 import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { parseDocument } from '../../core/document';
 import { renderWechat } from '../../core/render-wechat';
-import { renderXiaohongshu } from '../../core/render-xhs';
+import { XHS_CHARACTER_LIMIT, renderXiaohongshu } from '../../core/render-xhs';
 import { organizeXhsSource } from '../../core/xhs-organizer';
 import { getTemplate } from '../../core/templates';
 import { getTheme } from '../../core/themes';
 import { getWechatTheme } from '../../core/wechat-themes';
-import {
-  getWechatStyleName,
-  type WechatStyleConfig,
-} from '../../core/wechat-style';
+import { getWechatStyleName } from '../../core/wechat-style';
 import { copyPlainText, copyRichText } from './clipboard';
+import { ConfirmDialog, type ConfirmationRequest } from './ConfirmDialog';
+import { NoteDrawer } from './NoteDrawer';
 import { PreviewPane, type CopyTarget } from './PreviewPane';
-import { defaultDraft, loadDraft, saveDraft } from './storage';
-import { ToolDrawer, type DrawerId } from './ToolDrawer';
+import {
+  addNote,
+  createDefaultWorkspace,
+  deleteNote,
+  duplicateNote,
+  getActiveNote,
+  getNoteDisplayTitle,
+  loadWorkspace,
+  parseWorkspaceBackup,
+  parseStoredWorkspace,
+  renameNote,
+  replaceWorkspace,
+  saveWorkspace,
+  serializeWorkspaceBackup,
+  updateActiveNote,
+  WORKSPACE_STORAGE_KEY,
+  WorkspaceConflictError,
+  type ChannelId,
+  type NoteSnapshot,
+  type WorkspaceSnapshot,
+} from './storage';
+import { ToolDrawer, type DrawerId as ToolDrawerId } from './ToolDrawer';
 import styles from './EditorApp.module.css';
 
-type ChannelId = 'xiaohongshu' | 'wechat';
+type DrawerId = 'notes' | ToolDrawerId;
 
 interface EditorState {
-  source: string;
-  themeId: string;
-  wechatThemeId: string;
-  wechatStyle: WechatStyleConfig;
-  channel: ChannelId;
+  workspace: WorkspaceSnapshot;
+  persistenceBlocked: boolean;
   activeDrawer: DrawerId | null;
   mobileView: 'edit' | 'preview';
 }
 
 type EditorAction =
-  | { type: 'source'; source: string }
-  | { type: 'theme'; themeId: string }
-  | { type: 'wechat-theme'; themeId: string }
-  | { type: 'wechat-style'; style: WechatStyleConfig }
-  | { type: 'wechat-style-property'; property: keyof WechatStyleConfig; value: WechatStyleConfig[keyof WechatStyleConfig] }
-  | { type: 'channel'; channel: ChannelId }
+  | { type: 'note-patch'; patch: Partial<Omit<NoteSnapshot, 'id' | 'createdAt' | 'updatedAt'>>; closeDrawer?: boolean }
+  | { type: 'workspace'; workspace: WorkspaceSnapshot; closeDrawer?: boolean; unblockPersistence?: boolean }
+  | { type: 'external-workspace'; workspace: WorkspaceSnapshot }
+  | { type: 'select-note'; noteId: string }
   | { type: 'drawer'; drawer: DrawerId | null }
-  | { type: 'mobile-view'; view: 'edit' | 'preview' }
-  | { type: 'template'; source: string };
+  | { type: 'mobile-view'; view: 'edit' | 'preview' };
 
 function reducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
-    case 'source':
-      return { ...state, source: action.source };
-    case 'theme':
-      return { ...state, themeId: action.themeId, activeDrawer: null };
-    case 'wechat-theme':
-      return { ...state, wechatThemeId: action.themeId, activeDrawer: null };
-    case 'wechat-style':
-      return { ...state, wechatStyle: action.style };
-    case 'wechat-style-property':
-      return { ...state, wechatStyle: { ...state.wechatStyle, [action.property]: action.value } };
-    case 'channel':
-      return { ...state, channel: action.channel, activeDrawer: null };
+    case 'note-patch':
+      return {
+        ...state,
+        workspace: updateActiveNote(state.workspace, action.patch),
+        activeDrawer: action.closeDrawer ? null : state.activeDrawer,
+      };
+    case 'workspace':
+      return {
+        ...state,
+        workspace: action.workspace,
+        persistenceBlocked: action.unblockPersistence ? false : state.persistenceBlocked,
+        activeDrawer: action.closeDrawer ? null : state.activeDrawer,
+      };
+    case 'external-workspace':
+      return { ...state, workspace: action.workspace };
+    case 'select-note':
+      return {
+        ...state,
+        workspace: {
+          ...state.workspace,
+          revision: state.workspace.revision + 1,
+          activeNoteId: action.noteId,
+        },
+      };
     case 'drawer':
       return { ...state, activeDrawer: action.drawer };
     case 'mobile-view':
       return { ...state, mobileView: action.view };
-    case 'template':
-      return { ...state, source: action.source, activeDrawer: null };
   }
 }
 
 function initialState(): EditorState {
-  const draft = typeof window === 'undefined' ? defaultDraft : loadDraft();
-  return {
-    source: draft.source,
-    themeId: draft.themeId,
-    wechatThemeId: draft.wechatThemeId,
-    wechatStyle: draft.wechatStyle,
-    channel: draft.channel,
-    activeDrawer: null,
-    mobileView: 'edit',
-  };
+  const fallback = createDefaultWorkspace(0, 'default-note');
+  if (typeof window === 'undefined') {
+    return { workspace: fallback, persistenceBlocked: false, activeDrawer: null, mobileView: 'edit' };
+  }
+  try {
+    return { workspace: loadWorkspace(), persistenceBlocked: false, activeDrawer: null, mobileView: 'edit' };
+  } catch {
+    return { workspace: fallback, persistenceBlocked: true, activeDrawer: null, mobileView: 'edit' };
+  }
 }
 
 const railItems: readonly { id: DrawerId; marker: string; label: string }[] = [
+  { id: 'notes', marker: '稿', label: '笔记' },
   { id: 'themes', marker: '题', label: '主题' },
   { id: 'templates', marker: '模', label: '模板' },
   { id: 'guide', marker: '?', label: '说明' },
@@ -83,57 +106,86 @@ const railItems: readonly { id: DrawerId; marker: string; label: string }[] = [
 
 export function EditorApp() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
-  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved');
+  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error' | 'conflict' | 'recovery'>(
+    state.persistenceBlocked ? 'recovery' : 'saved',
+  );
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [copyTarget, setCopyTarget] = useState<CopyTarget>('all');
   const [organizeUndo, setOrganizeUndo] = useState<{ source: string; summary: string } | null>(null);
   const [previewMotion, setPreviewMotion] = useState(false);
+  const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
   const copyTimerRef = useRef<number | null>(null);
-  const deferredSource = useDeferredValue(state.source);
-  const xhsTheme = useMemo(() => getTheme(state.themeId), [state.themeId]);
-  const wechatTheme = useMemo(() => getWechatTheme(state.wechatThemeId), [state.wechatThemeId]);
-  const wechatStyleName = useMemo(() => getWechatStyleName(state.wechatStyle), [state.wechatStyle]);
+  const confirmationResolverRef = useRef<((accepted: boolean) => void) | null>(null);
+  const persistedRevisionRef = useRef(state.workspace.revision);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const activeNote = getActiveNote(state.workspace);
+  const deferredSource = useDeferredValue(activeNote.source);
+  const xhsTheme = useMemo(() => getTheme(activeNote.themeId), [activeNote.themeId]);
+  const wechatTheme = useMemo(() => getWechatTheme(activeNote.wechatThemeId), [activeNote.wechatThemeId]);
+  const wechatStyleName = useMemo(() => getWechatStyleName(activeNote.wechatStyle), [activeNote.wechatStyle]);
   const document = useMemo(() => parseDocument(deferredSource), [deferredSource]);
   const xhsResult = useMemo(
-    () => state.channel === 'xiaohongshu' ? renderXiaohongshu(document, xhsTheme) : null,
-    [document, state.channel, xhsTheme],
+    () => activeNote.channel === 'xiaohongshu' ? renderXiaohongshu(document, xhsTheme) : null,
+    [activeNote.channel, document, xhsTheme],
   );
   const wechatResult = useMemo(
-    () => state.channel === 'wechat' ? renderWechat(document, wechatTheme, state.wechatStyle) : null,
-    [document, state.channel, state.wechatStyle, wechatTheme],
+    () => activeNote.channel === 'wechat' ? renderWechat(document, wechatTheme, activeNote.wechatStyle) : null,
+    [activeNote.channel, activeNote.wechatStyle, document, wechatTheme],
   );
   const result = xhsResult ?? wechatResult!;
-  const activeTheme = state.channel === 'xiaohongshu' ? xhsTheme : wechatTheme;
-  const activeSwatch = state.channel === 'wechat' ? state.wechatStyle.accentColor : activeTheme.swatch;
+  const activeTheme = activeNote.channel === 'xiaohongshu' ? xhsTheme : wechatTheme;
+  const activeSwatch = activeNote.channel === 'wechat' ? activeNote.wechatStyle.accentColor : activeTheme.swatch;
 
   useEffect(() => {
+    if (state.persistenceBlocked) {
+      setSaveState('recovery');
+      return;
+    }
     setSaveState('saving');
     const timer = window.setTimeout(() => {
       try {
-        saveDraft({
-          schemaVersion: 1,
-          source: state.source,
-          themeId: state.themeId,
-          wechatThemeId: state.wechatThemeId,
-          wechatStyle: state.wechatStyle,
-          channel: state.channel,
-        });
+        saveWorkspace(state.workspace);
+        persistedRevisionRef.current = state.workspace.revision;
         setSaveState('saved');
-      } catch {
-        setSaveState('error');
+      } catch (error) {
+        setSaveState(error instanceof WorkspaceConflictError ? 'conflict' : 'error');
       }
     }, 420);
 
     return () => window.clearTimeout(timer);
-  }, [state.channel, state.source, state.themeId, state.wechatStyle, state.wechatThemeId]);
+  }, [state.persistenceBlocked, state.workspace]);
+
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== WORKSPACE_STORAGE_KEY || event.newValue === null || state.persistenceBlocked) return;
+      try {
+        const externalWorkspace = parseStoredWorkspace(event.newValue);
+        if (JSON.stringify(externalWorkspace) === JSON.stringify(state.workspace)) {
+          persistedRevisionRef.current = externalWorkspace.revision;
+          return;
+        }
+        const hasLocalChanges = state.workspace.revision !== persistedRevisionRef.current;
+        if (hasLocalChanges || externalWorkspace.revision <= state.workspace.revision) {
+          setSaveState('conflict');
+          return;
+        }
+        persistedRevisionRef.current = externalWorkspace.revision;
+        setSaveState('saved');
+        dispatch({ type: 'external-workspace', workspace: externalWorkspace });
+      } catch {
+        setSaveState('recovery');
+      }
+    }
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [state.persistenceBlocked, state.workspace]);
 
   useEffect(() => () => {
     if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
   }, []);
 
-  const documentName = xhsResult?.sections.title
-    || result.plainText.split('\n')[0]?.replace(/^\S+\s*/u, '').trim()
-    || '未命名草稿';
+  const documentName = getNoteDisplayTitle(activeNote);
 
   async function handleCopy(target: CopyTarget = 'all') {
     try {
@@ -147,6 +199,7 @@ export function EditorApp() {
             : target === 'topics'
               ? xhsResult.sections.topics
               : xhsResult.plainText;
+        if (Array.from(text).length > XHS_CHARACTER_LIMIT) return;
         await copyPlainText(text);
       }
       setCopyTarget(target);
@@ -159,32 +212,55 @@ export function EditorApp() {
   }
 
   function selectChannel(channel: ChannelId) {
-    if (channel === state.channel) return;
+    if (channel === activeNote.channel) return;
     if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
     setCopyState('idle');
     setCopyTarget('all');
     setPreviewMotion(true);
-    dispatch({ type: 'channel', channel });
+    dispatch({ type: 'note-patch', patch: { channel }, closeDrawer: true });
   }
 
-  function selectTemplate(templateId: string) {
-    const accepted = window.confirm('应用模板会替换当前草稿，是否继续？');
+  function requestConfirmation(request: ConfirmationRequest): Promise<boolean> {
+    confirmationResolverRef.current?.(false);
+    setConfirmation(request);
+    return new Promise((resolve) => {
+      confirmationResolverRef.current = resolve;
+    });
+  }
+
+  function settleConfirmation(accepted: boolean) {
+    const resolve = confirmationResolverRef.current;
+    confirmationResolverRef.current = null;
+    setConfirmation(null);
+    resolve?.(accepted);
+  }
+
+  async function selectTemplate(templateId: string) {
+    const template = getTemplate(templateId);
+    const accepted = await requestConfirmation({
+      kicker: '应用内容模板',
+      marker: '替',
+      title: `用“${template.name}”替换当前内容？`,
+      description: '当前笔记的正文会被模板内容替换，已选择的渠道与排版主题保持不变。',
+      confirmLabel: '应用模板',
+      tone: 'default',
+    });
     if (!accepted) return;
     setOrganizeUndo(null);
-    dispatch({ type: 'template', source: getTemplate(templateId).source });
+    dispatch({ type: 'note-patch', patch: { source: template.source }, closeDrawer: true });
   }
 
   function organizeSource() {
-    const organized = organizeXhsSource(state.source);
+    const organized = organizeXhsSource(activeNote.source);
     if (!organized.changed) return;
-    setOrganizeUndo({ source: state.source, summary: organized.summary });
+    setOrganizeUndo({ source: activeNote.source, summary: organized.summary });
     setPreviewMotion(true);
-    dispatch({ type: 'source', source: organized.source });
+    dispatch({ type: 'note-patch', patch: { source: organized.source } });
   }
 
   function undoOrganize() {
     if (!organizeUndo) return;
-    dispatch({ type: 'source', source: organizeUndo.source });
+    dispatch({ type: 'note-patch', patch: { source: organizeUndo.source } });
     setOrganizeUndo(null);
   }
 
@@ -192,8 +268,83 @@ export function EditorApp() {
     dispatch({ type: 'drawer', drawer: state.activeDrawer === drawer ? null : drawer });
   }
 
+  function focusActiveEditor() {
+    window.requestAnimationFrame(() => editorRef.current?.focus());
+  }
+
+  function createNote() {
+    setOrganizeUndo(null);
+    dispatch({ type: 'workspace', workspace: addNote(state.workspace), closeDrawer: true });
+    dispatch({ type: 'mobile-view', view: 'edit' });
+    focusActiveEditor();
+  }
+
+  function selectNote(noteId: string) {
+    if (noteId === state.workspace.activeNoteId) return;
+    setOrganizeUndo(null);
+    setCopyState('idle');
+    dispatch({ type: 'select-note', noteId });
+    setPreviewMotion(true);
+  }
+
+  async function removeNote(noteId: string) {
+    const note = state.workspace.notes.find((item) => item.id === noteId);
+    if (!note) return;
+    const accepted = await requestConfirmation({
+      kicker: '删除本机笔记',
+      marker: '删',
+      title: `删除“${getNoteDisplayTitle(note)}”？`,
+      description: '这条笔记会从当前浏览器中永久移除，此操作无法撤销。',
+      confirmLabel: '确认删除',
+      tone: 'danger',
+    });
+    if (!accepted) return;
+    setOrganizeUndo(null);
+    dispatch({ type: 'workspace', workspace: deleteNote(state.workspace, noteId) });
+  }
+
+  function exportBackup() {
+    const blob = new Blob([serializeWorkspaceBackup(state.workspace)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = globalThis.document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `纸间排版-笔记备份-${date}.json`;
+    link.hidden = true;
+    globalThis.document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  }
+
+  async function importBackup(value: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const workspace = parseWorkspaceBackup(value);
+      const accepted = await requestConfirmation({
+        kicker: '导入本地备份',
+        marker: '入',
+        title: `用备份中的 ${workspace.notes.length} 条笔记替换当前内容？`,
+        description: `当前浏览器里的 ${state.workspace.notes.length} 条笔记会被整套替换，建议确认已经导出过现有备份。`,
+        confirmLabel: '确认导入',
+        tone: 'default',
+      });
+      if (!accepted) return { success: false, message: '已取消导入' };
+      const replacement = replaceWorkspace(workspace, state.workspace.revision);
+      persistedRevisionRef.current = replacement.revision;
+      setOrganizeUndo(null);
+      dispatch({ type: 'workspace', workspace: replacement, unblockPersistence: true });
+      return { success: true, message: `已导入 ${replacement.notes.length} 条笔记` };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : '导入失败' };
+    }
+  }
+
   const saveLabel = saveState === 'saving'
     ? '正在保存'
+    : saveState === 'conflict'
+      ? '其他标签页有更新'
+      : saveState === 'recovery'
+        ? '本地数据异常，请导入备份'
     : saveState === 'error'
       ? '本地保存失败'
       : '已保存到本机';
@@ -211,12 +362,12 @@ export function EditorApp() {
         <div className={styles.channelSwitch} aria-label="输出渠道">
           <button
             type="button"
-            data-active={state.channel === 'xiaohongshu'}
+            data-active={activeNote.channel === 'xiaohongshu'}
             onClick={() => selectChannel('xiaohongshu')}
           >小红书</button>
           <button
             type="button"
-            data-active={state.channel === 'wechat'}
+            data-active={activeNote.channel === 'wechat'}
             onClick={() => selectChannel('wechat')}
           >公众号</button>
         </div>
@@ -262,23 +413,43 @@ export function EditorApp() {
           <a className={styles.railLink} href="/" aria-label="返回产品首页">←<small>首页</small></a>
         </nav>
 
-        {state.activeDrawer ? (
+        {state.activeDrawer === 'notes' ? (
+          <NoteDrawer
+            notes={state.workspace.notes}
+            activeNoteId={state.workspace.activeNoteId}
+            onClose={() => dispatch({ type: 'drawer', drawer: null })}
+            onCreate={createNote}
+            onSelect={selectNote}
+            onRename={(noteId, title) => dispatch({
+              type: 'workspace',
+              workspace: renameNote(state.workspace, noteId, title),
+            })}
+            onDuplicate={(noteId) => dispatch({
+              type: 'workspace',
+              workspace: duplicateNote(state.workspace, noteId),
+            })}
+            onDelete={removeNote}
+            onExport={exportBackup}
+            onImport={importBackup}
+          />
+        ) : state.activeDrawer ? (
           <ToolDrawer
             activeDrawer={state.activeDrawer}
-            channel={state.channel}
+            channel={activeNote.channel}
             selectedThemeId={activeTheme.id}
-            wechatStyle={state.wechatStyle}
+            wechatStyle={activeNote.wechatStyle}
             onClose={() => dispatch({ type: 'drawer', drawer: null })}
-            onSelectTheme={(themeId) => dispatch({
-              type: state.channel === 'xiaohongshu' ? 'theme' : 'wechat-theme',
-              themeId,
+            onSelectTheme={(themeId) => dispatch({ type: 'note-patch',
+              patch: activeNote.channel === 'xiaohongshu'
+                ? { themeId }
+                : { wechatThemeId: themeId },
+              closeDrawer: true,
             })}
             onSelectTemplate={selectTemplate}
-            onApplyWechatStyle={(style) => dispatch({ type: 'wechat-style', style })}
+            onApplyWechatStyle={(style) => dispatch({ type: 'note-patch', patch: { wechatStyle: style } })}
             onUpdateWechatStyle={(property, value) => dispatch({
-              type: 'wechat-style-property',
-              property,
-              value,
+              type: 'note-patch',
+              patch: { wechatStyle: { ...activeNote.wechatStyle, [property]: value } },
             })}
           />
         ) : null}
@@ -303,25 +474,31 @@ export function EditorApp() {
               ) : null}
               <button className={styles.themeShortcut} type="button" onClick={() => toggleDrawer('themes')}>
                 <span className={styles.themeDot} style={{ backgroundColor: activeSwatch }} aria-hidden="true" />
-                {state.channel === 'wechat' ? `样式 · ${wechatStyleName}` : `主题 · ${activeTheme.name}`}
+                {activeNote.channel === 'wechat' ? `样式 · ${wechatStyleName}` : `主题 · ${activeTheme.name}`}
               </button>
             </div>
           </header>
 
           <label className={styles.visuallyHidden} htmlFor="source-editor">输入文案</label>
           <textarea
+            ref={editorRef}
             className={styles.editor}
             id="source-editor"
-            value={state.source}
+            value={activeNote.source}
             spellCheck="false"
             onChange={(event) => {
               setOrganizeUndo(null);
-              dispatch({ type: 'source', source: event.target.value });
+              dispatch({ type: 'note-patch', patch: { source: event.target.value } });
             }}
           />
 
           <footer className={styles.editorFooter}>
-            <span>{result.stats.characters} 字</span>
+            <span
+              className={styles.characterCount}
+              data-over-limit={Boolean(xhsResult && result.stats.characters > XHS_CHARACTER_LIMIT)}
+            >
+              {xhsResult ? `${result.stats.characters} / ${XHS_CHARACTER_LIMIT} 字` : `${result.stats.characters} 字`}
+            </span>
             <span>{result.stats.headings} 个标题</span>
             <span>{result.stats.topics} 个话题</span>
             {xhsResult ? (
@@ -343,7 +520,7 @@ export function EditorApp() {
             result={wechatResult}
             theme={wechatTheme}
             styleName={wechatStyleName}
-            styleColor={state.wechatStyle.accentColor}
+            styleColor={activeNote.wechatStyle.accentColor}
             copyState={copyState}
             copyTarget={copyTarget}
             onCopy={handleCopy}
@@ -361,6 +538,11 @@ export function EditorApp() {
           />
         ) : null}
       </main>
+      <ConfirmDialog
+        request={confirmation}
+        onCancel={() => settleConfirmation(false)}
+        onConfirm={() => settleConfirmation(true)}
+      />
     </div>
   );
 }

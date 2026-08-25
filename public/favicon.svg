@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="纸间排版">
+  <rect width="64" height="64" rx="14" fill="#d94f3d"/>
+  <rect x="5.5" y="5.5" width="53" height="53" rx="10" fill="none" stroke="#fffaf1" stroke-opacity=".42"/>
+  <path d="M13 16h7M44 48h7" stroke="#fffaf1" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+  <text
+    x="32"
+    y="43"
+    fill="#fffaf1"
+    font-family="Songti SC, STSong, Noto Serif CJK SC, serif"
+    font-size="34"
+    font-weight="700"
+    text-anchor="middle"
+  >纸</text>
+</svg>
