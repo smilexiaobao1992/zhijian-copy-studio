@@ -190,7 +190,11 @@ export function EditorApp() {
   async function handleCopy(target: CopyTarget = 'all') {
     try {
       if (wechatResult) {
-        await copyRichText(wechatResult.html, wechatResult.plainText);
+        if (target === 'title') {
+          await copyPlainText(wechatResult.title);
+        } else {
+          await copyRichText(wechatResult.html, wechatResult.plainText);
+        }
       } else if (xhsResult) {
         const text = target === 'title'
           ? xhsResult.sections.title

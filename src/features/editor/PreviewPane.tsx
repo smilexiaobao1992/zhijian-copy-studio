@@ -27,7 +27,9 @@ export function PreviewPane(props: PreviewPaneProps) {
   const isWechat = channel === 'wechat';
   const isXhsOverLimit = !isWechat && result.stats.characters > XHS_CHARACTER_LIMIT;
   const copyLabel = copyState === 'copied'
-    ? isWechat ? '已复制公众号富文本' : copyTarget === 'all' ? '已复制全部' : '复制全部'
+    ? isWechat
+      ? copyTarget === 'all' ? '已复制公众号富文本' : '复制公众号富文本'
+      : copyTarget === 'all' ? '已复制全部' : '复制全部'
     : copyState === 'error'
       ? '复制失败，请重试'
       : isWechat
@@ -92,7 +94,18 @@ export function PreviewPane(props: PreviewPaneProps) {
           {result.warnings[0]?.message ?? readyMessage}
         </div>
         <div className={styles.copyActions} data-channel={channel}>
-          {!isWechat ? (
+          {isWechat ? (
+            <div className={styles.copyParts} aria-label="公众号分区复制">
+              <button
+                type="button"
+                data-state={copyState === 'copied' && copyTarget === 'title' ? 'copied' : 'idle'}
+                onClick={() => onCopy('title')}
+                disabled={!props.result.title}
+              >
+                {copyState === 'copied' && copyTarget === 'title' ? '已复制标题' : '复制标题'}
+              </button>
+            </div>
+          ) : (
             <div className={styles.copyParts} aria-label="分区复制">
               {([
                 ['title', '标题', props.result.sections.title],
@@ -116,10 +129,10 @@ export function PreviewPane(props: PreviewPaneProps) {
                 );
               })}
             </div>
-          ) : null}
+          )}
           <button
             className={styles.copyButton}
-            data-state={copyState === 'copied' && (isWechat || copyTarget === 'all') ? 'copied' : copyState}
+            data-state={copyState === 'copied' && copyTarget !== 'all' ? 'idle' : copyState}
             type="button"
             onClick={() => onCopy('all')}
             disabled={!result.plainText || isXhsOverLimit}

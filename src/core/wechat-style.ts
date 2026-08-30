@@ -14,7 +14,7 @@ export const wechatStyleConfigSchema = z.object({
 export type WechatStyleConfig = z.infer<typeof wechatStyleConfigSchema>;
 
 export interface WechatStylePreset {
-  id: 'classic' | 'elegant' | 'clean';
+  id: 'oriental' | 'classic' | 'elegant' | 'clean';
   name: string;
   description: string;
   config: WechatStyleConfig;
@@ -32,6 +32,19 @@ export const wechatStylePresets: readonly WechatStylePreset[] = [
       accentColor: '#b44735',
       headingStyle: 'editorial',
       codeTheme: 'ink',
+    },
+  },
+  {
+    id: 'oriental',
+    name: '东方书页',
+    description: '墨字朱砂细线，适合短篇随笔',
+    config: {
+      fontFamily: 'sans',
+      bodySize: 16,
+      lineHeight: 1.9,
+      accentColor: '#a84535',
+      headingStyle: 'underline',
+      codeTheme: 'paper',
     },
   },
   {
@@ -65,6 +78,7 @@ export const wechatStylePresets: readonly WechatStylePreset[] = [
 export const defaultWechatStyleConfig: WechatStyleConfig = wechatStylePresets[0]!.config;
 
 export const wechatAccentColors = [
+  { name: '陶朱红', value: '#a84535' },
   { name: '朱砂红', value: '#b44735' },
   { name: '经典蓝', value: '#185687' },
   { name: '翡翠绿', value: '#16836f' },

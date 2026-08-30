@@ -162,7 +162,8 @@ test('switches to the editorial WeChat renderer', async ({ page }, testInfo) => 
 
   await page.getByRole('button', { name: '公众号', exact: true }).click();
   await expect(page.getByRole('heading', { name: '微信公众号富文本' })).toBeVisible();
-  await expect(page.getByLabel('排版后的公众号文章')).toContainText('FEATURE / 01');
+  await expect(page.getByLabel('排版后的公众号文章')).not.toContainText('把 AI 文案整理成小红书笔记');
+  await expect(page.getByRole('button', { name: '复制标题' })).toBeVisible();
   await expect(page.getByRole('button', { name: '复制公众号富文本' })).toBeVisible();
   await page.getByRole('button', { name: '样式 · 经典手记' }).click();
   await expect(page.getByRole('heading', { name: '公众号样式工坊' })).toBeVisible();

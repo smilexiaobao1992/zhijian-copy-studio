@@ -11,6 +11,8 @@ describe('renderWechat', () => {
 
 这是 **真正重要** 的内容。
 
+## 为什么值得读
+
 > 写作先照顾读者，再照顾形式。
 
 1. 梳理观点
@@ -27,7 +29,9 @@ npm run build
 
     expect(result.html).toContain('data-zhijian-theme="editorial-notes"');
     expect(result.html).toContain("font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC'");
-    expect(result.html).toContain('FEATURE / 01');
+    expect(result.title).toBe('一份值得读完的文章');
+    expect(result.html).not.toContain('一份值得读完的文章');
+    expect(result.html).toContain('章节 / 01');
     expect(result.html).toContain('编者按');
     expect(result.html).toContain('真正重要');
     expect(result.html).toContain('<table');
@@ -45,6 +49,15 @@ npm run build
     expect(result.html).toContain('普通 &lt; 文本');
     expect(result.warnings.map((warning) => warning.code)).toContain('raw-html');
     expect(result.warnings.map((warning) => warning.code)).toContain('unsafe-link');
+  });
+
+  it('keeps safe Markdown line breaks inside tables without allowing other raw HTML', () => {
+    const document = parseDocument('| 版本 | 说明 |\n| --- | --- |\n| 帛书 | 原文<br>补充说明 |');
+    const result = renderWechat(document, getWechatTheme('editorial-notes'));
+
+    expect(result.html).toContain('原文<br />补充说明');
+    expect(result.plainText).toContain('原文\n补充说明');
+    expect(result.warnings.map((warning) => warning.code)).not.toContain('raw-html');
   });
 
   it('keeps images local-first by rendering a styled insertion placeholder', () => {
@@ -74,12 +87,66 @@ npm run build
     expect(result.html).toContain("font-family:'Songti SC'");
     expect(result.html).toContain('font-size:17px;line-height:2.05');
     expect(result.html).toContain('color:#a35f6f');
-    expect(result.html).toContain('background-color:#f4ede3;color:#2d2723');
+    expect(result.html).toContain('background-color:#f7f7f5;color:#2d2723');
+  });
+
+  it('keeps the copied article root transparent and lets the editor own its canvas spacing', () => {
+    const document = parseDocument('# 标题\n\n正文');
+    const result = renderWechat(document, getWechatTheme('editorial-notes'));
+    const rootTag = result.html.match(/^<section[^>]+>/u)?.[0] ?? '';
+
+    expect(rootTag).toContain('padding:0');
+    expect(rootTag).not.toContain('background-color');
+  });
+
+  it('keeps a leading article title outside copied WeChat body content', () => {
+    const document = parseDocument('# 公众号标题\n\n## 正文小标题\n\n正文内容');
+    const result = renderWechat(document, getWechatTheme('editorial-notes'));
+
+    expect(result.title).toBe('公众号标题');
+    expect(result.html).not.toContain('公众号标题');
+    expect(result.plainText).toBe('正文小标题\n\n正文内容');
+    expect(result.stats.headings).toBe(1);
+  });
+
+  it('uses restrained ink emphasis and open quotes in the oriental preset', () => {
+    const document = parseDocument('**稳定的善意**\n\n> 圣人恒无心');
+    const oriental = wechatStylePresets.find((preset) => preset.id === 'oriental')!;
+    const theme = getWechatTheme('editorial-notes');
+    const result = renderWechat(document, theme, oriental.config);
+
+    expect(result.html).toContain(`<strong style="color:${theme.palette.ink};font-weight:700;">稳定的善意</strong>`);
+    expect(result.html).not.toContain('text-decoration-thickness');
+    expect(result.html).toContain(`border-top:1px solid ${theme.palette.line}`);
+    expect(result.html).not.toContain(`background-color:${theme.palette.soft};`);
+  });
+
+  it('renders only explicit Obsidian-style highlights as a themed underline', () => {
+    const document = parseDocument('我想到 ==《老子》里的“无心”==，以及 **自己的判断**。');
+    const theme = getWechatTheme('editorial-notes');
+    const result = renderWechat(document, theme);
+
+    expect(result.html).toContain('data-zhijian-mark="underline"');
+    expect(result.html).toContain(`border-bottom:3px solid ${theme.palette.accent}`);
+    expect(result.html).toContain('《老子》里的“无心”');
+    expect(result.html).not.toContain('data-zhijian-mark="underline" style="padding-bottom:3px;border-bottom:3px solid #b44735;">自己的判断');
+    expect(result.plainText).toBe('我想到 《老子》里的“无心”，以及 自己的判断。');
+  });
+
+  it('uses a restrained hierarchy for third- and fourth-level headings', () => {
+    const document = parseDocument('### 主章节\n\n#### 子标题');
+    const theme = getWechatTheme('editorial-notes');
+    const result = renderWechat(document, theme);
+
+    expect(result.html).toContain(`border-left:2px solid ${theme.palette.accent}`);
+    expect(result.html).toContain('font-size:18px');
+    expect(result.html).toContain('font-size:16px');
+    expect(result.html).not.toContain('章节 /');
   });
 
   it('rejects injected custom style colors at the renderer boundary', () => {
     const document = parseDocument('正文');
-    const classic = wechatStylePresets[0]!.config;
+    const classic = wechatStylePresets.find((preset) => preset.id === 'classic')!.config;
 
     expect(() => renderWechat(document, getWechatTheme('editorial-notes'), {
       ...classic,
@@ -126,9 +193,10 @@ npm run build
     const document = parseDocument('[^note]: 前置脚注。\n\n# 主标题\n\n正文[^note]。');
     const result = renderWechat(document, getWechatTheme('editorial-notes'));
 
-    expect(result.html.indexOf('FEATURE / 01')).toBeLessThan(result.html.indexOf('注释 / note'));
-    expect(result.plainText.indexOf('主标题')).toBeLessThan(result.plainText.indexOf('［note］ 前置脚注。'));
-    expect(result.stats.headings).toBe(1);
+    expect(result.html.indexOf('正文')).toBeLessThan(result.html.indexOf('注释 / note'));
+    expect(result.plainText.startsWith('正文［note］。')).toBe(true);
+    expect(result.plainText).not.toContain('主标题');
+    expect(result.stats.headings).toBe(0);
     expect(result.stats.paragraphs).toBe(1);
   });
 

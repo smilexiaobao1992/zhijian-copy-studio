@@ -91,6 +91,17 @@ describe('renderXiaohongshu', () => {
     expect(renderXiaohongshu(document, getTheme('signal-tech')).sections.title).toBe('标题');
   });
 
+  it('removes Obsidian highlight markers from Xiaohongshu plain text', () => {
+    const result = renderXiaohongshu(
+      parseDocument('# ==标题==\n\n我想到 ==《老子》里的“无心”==。'),
+      getTheme('clear-note'),
+    );
+
+    expect(result.plainText).toContain('我想到 《老子》里的“无心”。');
+    expect(result.plainText).not.toContain('==');
+    expect(result.sections.title).toBe('标题');
+  });
+
   it('does not infer a title from a list-only draft', () => {
     const result = renderXiaohongshu(parseDocument('- 第一项\n- 第二项'), getTheme('clear-note'));
 

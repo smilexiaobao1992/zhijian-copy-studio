@@ -58,6 +58,10 @@ const circledNumbers = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', 
 const filledNumbers = ['❶', '❷', '❸', '❹', '❺', '❻', '❼', '❽', '❾', '❿'];
 const keycapNumbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
+function stripMarkedText(value: string): string {
+  return value.replace(/==([^=\n]+)==/gu, '$1');
+}
+
 function renderPhrasing(
   children: readonly PhrasingContent[],
   theme: XhsTheme,
@@ -69,7 +73,7 @@ function renderPhrasing(
 function renderInline(node: PhrasingContent, theme: XhsTheme, context: RenderContext): string {
   switch (node.type) {
     case 'text':
-      return node.value;
+      return stripMarkedText(node.value);
     case 'strong':
       return `${theme.rules.strongOpen}${renderPhrasing(node.children, theme, context)}${theme.rules.strongClose}`;
     case 'emphasis':
@@ -237,6 +241,7 @@ function publishingText(children: readonly PhrasingContent[]): string {
   return children.map((node) => {
     switch (node.type) {
       case 'text':
+        return stripMarkedText(node.value);
       case 'inlineCode':
         return node.value;
       case 'strong':

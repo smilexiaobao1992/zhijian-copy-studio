@@ -110,6 +110,7 @@ export function ToolDrawer({
             <div><dt>1. 步骤</dt><dd>生成数字序号</dd></div>
             <div><dt>&gt; 提示</dt><dd>生成醒目引用</dd></div>
             <div><dt>**重点**</dt><dd>生成纯文本强调</dd></div>
+            {channel === 'wechat' ? <div><dt>==划线==</dt><dd>生成朱砂重点线</dd></div> : null}
           </dl>
           <p className={styles.drawerNote}>
             {channel === 'xiaohongshu'
