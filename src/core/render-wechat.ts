@@ -223,7 +223,8 @@ function renderHeading(
         ? '28px 0 16px'
         : '22px 0 10px';
   const label = node.depth === 1 ? '本期' : theme.rules.headingLabel;
-  const heading = `<h${node.depth} style="margin:0;color:${theme.palette.ink};font-family:${context.style.headingFont};font-size:${fontSize}px;font-weight:700;line-height:${node.depth <= 2 ? 1.42 : 1.55};letter-spacing:${node.depth === 1 ? '-0.02em' : '0'};">${title}</h${node.depth}>`;
+  const headingAlignment = context.style.headingStyle === 'band' && node.depth <= 2 ? 'text-align:center;' : '';
+  const heading = `<h${node.depth} style="${headingAlignment}margin:0;color:${theme.palette.ink};font-family:${context.style.headingFont};font-size:${fontSize}px;font-weight:700;line-height:${node.depth <= 2 ? 1.42 : 1.55};letter-spacing:${node.depth === 1 ? '-0.02em' : '0'};">${title}</h${node.depth}>`;
 
   if (node.depth >= 4) {
     return `<section style="margin:${margin};">${heading}</section>`;
@@ -243,24 +244,29 @@ function renderHeading(
     case 'side':
       return `<section style="margin:${margin};padding:2px 0 2px 14px;border-left:4px solid ${theme.palette.accent};">
         ${heading}
-        <p style="margin:7px 0 0;color:${theme.palette.muted};font-family:${context.style.bodyFont};font-size:9px;font-weight:700;letter-spacing:0.16em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
+        <p style="margin:7px 0 0;color:${theme.palette.muted};font-family:${context.style.bodyFont};font-size:11px;font-weight:700;letter-spacing:0.14em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
+      </section>`;
+    case 'band':
+      return `<section style="margin:${margin};text-align:center;">
+        <p style="margin:0 0 12px;text-align:center;line-height:1.4;"><span style="display:inline-block;padding:5px 14px;background-color:${theme.palette.accent};color:#ffffff;font-family:${context.style.bodyFont};font-size:12px;font-weight:700;letter-spacing:0.14em;">${escapeHtml(label)} / ${index}</span></p>
+        ${heading}
       </section>`;
     case 'underline':
       return `<section style="margin:${margin};padding-bottom:12px;border-bottom:1px solid ${theme.palette.line};">
-        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.18em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
+        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:12px;font-weight:700;letter-spacing:0.14em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
         ${heading}
       </section>`;
     case 'minimal':
       return `<section style="margin:${margin};">
-        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.18em;line-height:1.4;">● ${String(context.headingIndex).padStart(2, '0')}</p>
+        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:11px;font-weight:700;letter-spacing:0.16em;line-height:1.4;">● ${String(context.headingIndex).padStart(2, '0')}</p>
         ${heading}
       </section>`;
     case 'editorial':
     default:
       return `<section style="margin:${margin};">
-        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:10px;font-weight:700;letter-spacing:0.18em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
+        <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:12px;font-weight:700;letter-spacing:0.14em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
         ${heading}
-        <span style="display:inline-block;width:30px;height:3px;margin-top:14px;background-color:${theme.palette.accent};vertical-align:top;"></span>
+        <p data-zhijian-divider="short-rule" style="width:32px;height:3px;margin:14px 0 0;overflow:hidden;background-color:${theme.palette.accent};color:${theme.palette.accent};font-size:1px;line-height:3px;">&nbsp;</p>
       </section>`;
   }
 }

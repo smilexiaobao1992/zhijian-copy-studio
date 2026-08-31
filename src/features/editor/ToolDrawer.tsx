@@ -238,9 +238,10 @@ function WechatStyleWorkshop({ config, onApplyPreset, onUpdate }: WechatStyleWor
         <legend>标题样式</legend>
         <div className={styles.headingStyleGrid}>
           {([
-            ['editorial', '章节'],
+            ['editorial', '短线'],
+            ['band', '章签'],
             ['side', '侧标'],
-            ['underline', '细线'],
+            ['underline', '通栏'],
             ['minimal', '留白'],
           ] as const).map(([value, label]) => (
             <button

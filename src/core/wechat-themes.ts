@@ -19,7 +19,7 @@ const themeDefinitions = [
     },
     rules: {
       headingLabel: '章节',
-      quoteLabel: '编者按',
+      quoteLabel: '引文',
       divider: '·  ·  ·',
     },
   },

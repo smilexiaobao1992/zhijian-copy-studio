@@ -32,7 +32,12 @@ npm run build
     expect(result.title).toBe('一份值得读完的文章');
     expect(result.html).not.toContain('一份值得读完的文章');
     expect(result.html).toContain('章节 / 01');
-    expect(result.html).toContain('编者按');
+    expect(result.html).toContain('font-size:12px');
+    expect(result.html).toContain('data-zhijian-divider="short-rule"');
+    expect(result.html).toContain('>&nbsp;</p>');
+    expect(result.html).not.toContain('vertical-align:top;"></span>');
+    expect(result.html).toContain('引文');
+    expect(result.html).not.toContain('编者按');
     expect(result.html).toContain('真正重要');
     expect(result.html).toContain('<table');
     expect(result.html).toContain('CODE / SH');
@@ -88,6 +93,20 @@ npm run build
     expect(result.html).toContain('font-size:17px;line-height:2.05');
     expect(result.html).toContain('color:#a35f6f');
     expect(result.html).toContain('background-color:#f7f7f5;color:#2d2723');
+  });
+
+  it('renders a centered chapter band as a selectable heading style', () => {
+    const document = parseDocument('## 小标题\n\n一段正文。');
+    const classic = wechatStylePresets.find((preset) => preset.id === 'classic')!;
+    const result = renderWechat(document, getWechatTheme('editorial-notes'), {
+      ...classic.config,
+      headingStyle: 'band',
+    });
+
+    expect(result.html).toContain('data-zhijian-heading="band"');
+    expect(result.html).toContain('text-align:center');
+    expect(result.html).toContain('padding:5px 14px');
+    expect(result.html).toContain('章节 / 01');
   });
 
   it('keeps the copied article root transparent and lets the editor own its canvas spacing', () => {

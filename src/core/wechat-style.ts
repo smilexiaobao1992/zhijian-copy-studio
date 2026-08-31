@@ -7,7 +7,7 @@ export const wechatStyleConfigSchema = z.object({
   bodySize: z.union([z.literal(15), z.literal(16), z.literal(17), z.literal(18)]),
   lineHeight: z.union([z.literal(1.75), z.literal(1.9), z.literal(2.05)]),
   accentColor: hexColorSchema,
-  headingStyle: z.enum(['editorial', 'side', 'underline', 'minimal']),
+  headingStyle: z.enum(['editorial', 'band', 'side', 'underline', 'minimal']),
   codeTheme: z.enum(['ink', 'paper']),
 }).strict();
 

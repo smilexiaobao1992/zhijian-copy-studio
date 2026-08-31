@@ -1212,7 +1212,7 @@
 }
 
 .headingStyleGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .headingStyleGrid button {
@@ -1244,6 +1244,13 @@
 
 .headingStyleGrid span[data-style="editorial"] i:first-child {
   border-bottom: 2px solid var(--color-accent);
+}
+
+.headingStyleGrid span[data-style="band"] i:first-child {
+  width: 82%;
+  margin-inline: auto;
+  background: var(--color-accent);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .headingStyleGrid span[data-style="side"] {
