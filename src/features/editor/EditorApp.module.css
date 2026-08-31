@@ -511,6 +511,12 @@
   gap: 4px;
 }
 
+@media (min-width: 1101px) {
+  .copyActions[data-channel="wechat"] .copyParts {
+    grid-template-columns: auto;
+  }
+}
+
 .copyParts button {
   min-width: 56px;
   min-height: 40px;

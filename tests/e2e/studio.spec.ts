@@ -165,6 +165,9 @@ test('switches to the editorial WeChat renderer', async ({ page }, testInfo) => 
   await expect(page.getByLabel('排版后的公众号文章')).not.toContainText('把 AI 文案整理成小红书笔记');
   await expect(page.getByRole('button', { name: '复制标题' })).toBeVisible();
   await expect(page.getByRole('button', { name: '复制公众号富文本' })).toBeVisible();
+  const copyHint = page.getByText('复制内容会携带内联样式，粘贴后请检查公众号编辑器的最终效果。');
+  await expect(copyHint).toBeVisible();
+  expect((await copyHint.boundingBox())?.width).toBeGreaterThan(120);
   await page.getByRole('button', { name: '样式 · 经典手记' }).click();
   await expect(page.getByRole('heading', { name: '公众号样式工坊' })).toBeVisible();
 
