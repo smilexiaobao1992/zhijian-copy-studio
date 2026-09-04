@@ -1,5 +1,7 @@
 import type {
   Blockquote,
+  Image,
+  ImageReference,
   Link,
   List,
   ListItem,
@@ -52,7 +54,12 @@ interface RenderContext {
   sawImage: boolean;
   blockedLinks: number;
   definitions: ReadonlyMap<string, MarkdownDefinition>;
+  imageSources: ReadonlyMap<string, string>;
   style: ResolvedWechatStyle;
+}
+
+export interface WechatRenderAssets {
+  imageSources?: ReadonlyMap<string, string>;
 }
 
 interface ResolvedWechatStyle {
@@ -152,7 +159,7 @@ function renderInline(
     }
     case 'image':
     case 'imageReference':
-      return renderImagePlaceholder(node.alt, palette, context);
+      return renderImage(node, theme, context, false);
     case 'footnoteReference':
       return `<sup style="color:${palette.accent};font-size:0.72em;">［${escapeHtml(node.identifier)}］</sup>`;
     case 'html':
@@ -160,6 +167,37 @@ function renderInline(
     default:
       return '';
   }
+}
+
+function resolveImageUrl(node: Image | ImageReference, context: RenderContext): string | null {
+  if (node.type === 'image') return node.url;
+  return context.definitions.get(normalizeReferenceIdentifier(node.identifier))?.url ?? null;
+}
+
+function safeImageDataUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  return /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/]+=*$/iu.test(value) ? value : null;
+}
+
+function renderImage(
+  node: Image | ImageReference,
+  theme: WechatTheme,
+  context: RenderContext,
+  block: boolean,
+): string {
+  const imageUrl = resolveImageUrl(node, context);
+  const dataUrl = imageUrl ? safeImageDataUrl(context.imageSources.get(imageUrl)) : null;
+  if (!dataUrl) return renderImagePlaceholder(node.alt, theme.palette, context);
+
+  const alt = node.alt?.trim() || '正文图片';
+  if (!block) {
+    return `<img data-zhijian-image="local" src="${escapeHtml(dataUrl)}" alt="${escapeHtml(alt)}" style="display:inline-block;max-width:100%;height:auto;margin:0 4px;vertical-align:middle;" />`;
+  }
+
+  return `<section data-zhijian-image="local" style="margin:24px 0;text-align:center;">
+    <img src="${escapeHtml(dataUrl)}" alt="${escapeHtml(alt)}" style="display:block;width:100%;max-width:100%;height:auto;margin:0 auto;border-radius:4px;" />
+    ${node.alt ? `<p style="margin:8px 0 0;color:${theme.palette.muted};font-family:${context.style.bodyFont};font-size:12px;line-height:1.6;letter-spacing:0.04em;text-align:center;">${escapeHtml(node.alt)}</p>` : ''}
+  </section>`;
 }
 
 function renderImagePlaceholder(
@@ -202,6 +240,11 @@ function renderParagraph(
   context: RenderContext,
 ): string {
   context.paragraphs += 1;
+  const standaloneImage = node.children.length === 1
+    && (node.children[0]?.type === 'image' || node.children[0]?.type === 'imageReference')
+    ? node.children[0]
+    : null;
+  if (standaloneImage) return renderImage(standaloneImage, theme, context, true);
   return `<p style="${paragraphStyle(theme, context)}">${renderPhrasing(node.children, theme, context)}</p>`;
 }
 
@@ -483,6 +526,7 @@ export function renderWechat(
   document: ContentDocument,
   theme: WechatTheme,
   requestedStyle: WechatStyleConfig = defaultWechatStyleConfig,
+  assets: WechatRenderAssets = {},
 ): WechatRenderResult {
   const styleConfig = wechatStyleConfigSchema.parse(requestedStyle);
   const references = collectMarkdownReferences(document.ast);
@@ -505,6 +549,7 @@ export function renderWechat(
     sawImage: false,
     blockedLinks: 0,
     definitions,
+    imageSources: assets.imageSources ?? new Map(),
     style: {
       bodyFont: fontStacks[styleConfig.fontFamily],
       headingFont: fontStacks[styleConfig.fontFamily],

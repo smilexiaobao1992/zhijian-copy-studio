@@ -9,6 +9,12 @@ import { getWechatTheme } from '../../core/wechat-themes';
 import { getWechatStyleName } from '../../core/wechat-style';
 import { copyPlainText, copyRichText } from './clipboard';
 import { ConfirmDialog, type ConfirmationRequest } from './ConfirmDialog';
+import {
+  collectLocalImageUris,
+  loadLocalImageSources,
+  storeLocalImage,
+  WECHAT_IMAGE_ACCEPT,
+} from './image-store';
 import { NoteDrawer } from './NoteDrawer';
 import { PreviewPane, type CopyTarget } from './PreviewPane';
 import {
@@ -46,6 +52,7 @@ interface EditorState {
 
 type EditorAction =
   | { type: 'note-patch'; patch: Partial<Omit<NoteSnapshot, 'id' | 'createdAt' | 'updatedAt'>>; closeDrawer?: boolean }
+  | { type: 'note-source'; noteId: string; source: string }
   | { type: 'workspace'; workspace: WorkspaceSnapshot; closeDrawer?: boolean; unblockPersistence?: boolean }
   | { type: 'external-workspace'; workspace: WorkspaceSnapshot }
   | { type: 'select-note'; noteId: string }
@@ -60,6 +67,19 @@ function reducer(state: EditorState, action: EditorAction): EditorState {
         workspace: updateActiveNote(state.workspace, action.patch),
         activeDrawer: action.closeDrawer ? null : state.activeDrawer,
       };
+    case 'note-source': {
+      if (!state.workspace.notes.some((note) => note.id === action.noteId)) return state;
+      return {
+        ...state,
+        workspace: {
+          ...state.workspace,
+          revision: state.workspace.revision + 1,
+          notes: state.workspace.notes.map((note) => note.id === action.noteId
+            ? { ...note, source: action.source, updatedAt: Date.now() }
+            : note),
+        },
+      };
+    }
     case 'workspace':
       return {
         ...state,
@@ -104,6 +124,18 @@ const railItems: readonly { id: DrawerId; marker: string; label: string }[] = [
   { id: 'guide', marker: '?', label: '说明' },
 ];
 
+function insertMarkdownBlock(source: string, start: number, end: number, block: string) {
+  const before = source.slice(0, start);
+  const after = source.slice(end);
+  const leading = before.length === 0 || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
+  const trailing = after.length === 0 || after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
+  const inserted = `${leading}${block}${trailing}`;
+  return {
+    source: `${before}${inserted}${after}`,
+    cursor: before.length + inserted.length,
+  };
+}
+
 export function EditorApp() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error' | 'conflict' | 'recovery'>(
@@ -114,23 +146,34 @@ export function EditorApp() {
   const [organizeUndo, setOrganizeUndo] = useState<{ source: string; summary: string } | null>(null);
   const [previewMotion, setPreviewMotion] = useState(false);
   const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
+  const [imageSources, setImageSources] = useState<ReadonlyMap<string, string>>(new Map());
+  const [imageNotice, setImageNotice] = useState<string | null>(null);
   const copyTimerRef = useRef<number | null>(null);
   const confirmationResolverRef = useRef<((accepted: boolean) => void) | null>(null);
   const persistedRevisionRef = useRef(state.workspace.revision);
+  const workspaceRef = useRef(state.workspace);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const activeNote = getActiveNote(state.workspace);
+  workspaceRef.current = state.workspace;
   const deferredSource = useDeferredValue(activeNote.source);
   const xhsTheme = useMemo(() => getTheme(activeNote.themeId), [activeNote.themeId]);
   const wechatTheme = useMemo(() => getWechatTheme(activeNote.wechatThemeId), [activeNote.wechatThemeId]);
   const wechatStyleName = useMemo(() => getWechatStyleName(activeNote.wechatStyle), [activeNote.wechatStyle]);
   const document = useMemo(() => parseDocument(deferredSource), [deferredSource]);
+  const localImageKey = useMemo(
+    () => collectLocalImageUris(activeNote.source).join('|'),
+    [activeNote.source],
+  );
   const xhsResult = useMemo(
     () => activeNote.channel === 'xiaohongshu' ? renderXiaohongshu(document, xhsTheme) : null,
     [activeNote.channel, document, xhsTheme],
   );
   const wechatResult = useMemo(
-    () => activeNote.channel === 'wechat' ? renderWechat(document, wechatTheme, activeNote.wechatStyle) : null,
-    [activeNote.channel, activeNote.wechatStyle, document, wechatTheme],
+    () => activeNote.channel === 'wechat'
+      ? renderWechat(document, wechatTheme, activeNote.wechatStyle, { imageSources })
+      : null,
+    [activeNote.channel, activeNote.wechatStyle, document, imageSources, wechatTheme],
   );
   const result = xhsResult ?? wechatResult!;
   const activeTheme = activeNote.channel === 'xiaohongshu' ? xhsTheme : wechatTheme;
@@ -154,6 +197,28 @@ export function EditorApp() {
 
     return () => window.clearTimeout(timer);
   }, [state.persistenceBlocked, state.workspace]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (activeNote.channel !== 'wechat' || !localImageKey) {
+      setImageSources(new Map());
+      return () => { cancelled = true; };
+    }
+
+    loadLocalImageSources(localImageKey)
+      .then((sources) => {
+        if (!cancelled) setImageSources(sources);
+      })
+      .catch(() => {
+        if (!cancelled) setImageNotice('本地图片读取失败，请重新插入');
+      });
+
+    return () => { cancelled = true; };
+  }, [activeNote.channel, activeNote.id, localImageKey]);
+
+  useEffect(() => {
+    setImageNotice(null);
+  }, [activeNote.channel, activeNote.id]);
 
   useEffect(() => {
     function handleStorage(event: StorageEvent) {
@@ -193,7 +258,15 @@ export function EditorApp() {
         if (target === 'title') {
           await copyPlainText(wechatResult.title);
         } else {
-          await copyRichText(wechatResult.html, wechatResult.plainText);
+          const currentDocument = parseDocument(activeNote.source);
+          const currentImageSources = await loadLocalImageSources(activeNote.source);
+          const currentResult = renderWechat(
+            currentDocument,
+            wechatTheme,
+            activeNote.wechatStyle,
+            { imageSources: currentImageSources },
+          );
+          await copyRichText(currentResult.html, currentResult.plainText);
         }
       } else if (xhsResult) {
         const text = target === 'title'
@@ -213,6 +286,56 @@ export function EditorApp() {
     }
     if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
     copyTimerRef.current = window.setTimeout(() => setCopyState('idle'), 1800);
+  }
+
+  async function insertImageFiles(files: readonly File[], start: number, end: number) {
+    if (files.length === 0) return;
+    const targetNoteId = activeNote.id;
+    const sourceAtStart = activeNote.source;
+    setImageNotice('正在把图片保存到本机…');
+    try {
+      const assets = await Promise.all(files.map((file) => storeLocalImage(file)));
+      const markdown = assets.map((asset) => `![${asset.alt}](${asset.uri})`).join('\n\n');
+      const latestNote = workspaceRef.current.notes.find((note) => note.id === targetNoteId);
+      if (!latestNote) return;
+      const sourceChanged = latestNote.source !== sourceAtStart;
+      const insertion = insertMarkdownBlock(
+        latestNote.source,
+        sourceChanged ? latestNote.source.length : start,
+        sourceChanged ? latestNote.source.length : end,
+        markdown,
+      );
+      dispatch({ type: 'note-source', noteId: targetNoteId, source: insertion.source });
+
+      if (workspaceRef.current.activeNoteId === targetNoteId) {
+        setImageSources((current) => {
+          const next = new Map(current);
+          assets.forEach((asset) => next.set(asset.uri, asset.dataUrl));
+          return next;
+        });
+        setOrganizeUndo(null);
+        setImageNotice(`已插入 ${assets.length} 张图片，可随正文一起复制`);
+        window.requestAnimationFrame(() => {
+          editorRef.current?.focus();
+          editorRef.current?.setSelectionRange(insertion.cursor, insertion.cursor);
+        });
+      }
+    } catch (error) {
+      if (workspaceRef.current.activeNoteId === targetNoteId) {
+        setImageNotice(error instanceof Error ? error.message : '图片插入失败');
+      }
+    }
+  }
+
+  function pasteImages(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    if (activeNote.channel !== 'wechat') return;
+    const files = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file !== null);
+    if (files.length === 0) return;
+    event.preventDefault();
+    void insertImageFiles(files, event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
   }
 
   function selectChannel(channel: ChannelId) {
@@ -465,6 +588,33 @@ export function EditorApp() {
               <h1 id="editor-heading">Markdown 编辑器</h1>
             </div>
             <div className={styles.editorHeaderActions}>
+              {wechatResult ? (
+                <>
+                  <input
+                    ref={imageInputRef}
+                    data-testid="wechat-image-input"
+                    type="file"
+                    accept={WECHAT_IMAGE_ACCEPT}
+                    multiple
+                    hidden
+                    onChange={(event) => {
+                      const files = Array.from(event.currentTarget.files ?? []);
+                      event.currentTarget.value = '';
+                      const editor = editorRef.current;
+                      void insertImageFiles(
+                        files,
+                        editor?.selectionStart ?? activeNote.source.length,
+                        editor?.selectionEnd ?? activeNote.source.length,
+                      );
+                    }}
+                  />
+                  <button
+                    className={styles.imageButton}
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                  >插入图片</button>
+                </>
+              ) : null}
               {xhsResult ? (
                 <button
                   className={styles.organizeButton}
@@ -494,6 +644,7 @@ export function EditorApp() {
               setOrganizeUndo(null);
               dispatch({ type: 'note-patch', patch: { source: event.target.value } });
             }}
+            onPaste={pasteImages}
           />
 
           <footer className={styles.editorFooter}>
@@ -513,7 +664,9 @@ export function EditorApp() {
                 ) : null}
               </span>
             ) : (
-              <span className={styles.editorHint}>支持标题、列表、引用、重点和代码</span>
+              <span className={styles.editorHint} aria-live="polite">
+                {imageNotice ?? '支持标题、列表、引用、重点、代码和本地图片'}
+              </span>
             )}
           </footer>
         </section>

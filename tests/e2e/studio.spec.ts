@@ -184,6 +184,84 @@ test('switches to the editorial WeChat renderer', async ({ page }, testInfo) => 
   )).toBe('rgb(24, 86, 135)');
 });
 
+test('pastes a local image and copies it inside WeChat rich text', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only clipboard image detail');
+  await page.goto('/studio/');
+  await page.getByRole('button', { name: '公众号', exact: true }).click();
+  const editor = page.getByLabel('输入文案');
+  await editor.fill('## 正文');
+  await editor.evaluate((element) => {
+    const binary = atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([bytes], '粘贴图片.png', { type: 'image/png' }));
+    element.dispatchEvent(new ClipboardEvent('paste', {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: transfer,
+    }));
+  });
+
+  await expect(editor).toHaveValue(/!\[粘贴图片\]\(zhijian-image:\/\/[a-z0-9-]+\)/u);
+  await expect(page.getByText('已插入 1 张图片，可随正文一起复制')).toBeVisible();
+  await expect(page.getByLabel('排版后的公众号文章').locator('img[alt="粘贴图片"]')).toBeVisible();
+
+  await page.evaluate(() => {
+    const capture = window as typeof window & { __copiedRichText?: string };
+    Object.defineProperty(navigator.clipboard, 'write', {
+      configurable: true,
+      value: async (items: ClipboardItem[]) => {
+        const item = items.find((candidate) => candidate.types.includes('text/html'));
+        capture.__copiedRichText = item ? await (await item.getType('text/html')).text() : '';
+      },
+    });
+  });
+  await page.getByRole('button', { name: '复制公众号富文本' }).click();
+  await expect.poll(() => page.evaluate(
+    () => (window as typeof window & { __copiedRichText?: string }).__copiedRichText ?? '',
+  )).not.toBe('');
+  const capturedHtml = await page.evaluate(
+    () => (window as typeof window & { __copiedRichText?: string }).__copiedRichText ?? '',
+  );
+  expect(capturedHtml).toContain('<img');
+  expect(capturedHtml).toContain('data:image/png;base64,');
+});
+
+test('keeps an async image insertion with the note where it started', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only async note boundary');
+  await page.goto('/studio/');
+  await page.getByRole('button', { name: '公众号', exact: true }).click();
+  const editor = page.getByLabel('输入文案');
+  await editor.fill('# 原笔记');
+  await page.evaluate(() => {
+    const originalRead = FileReader.prototype.readAsDataURL;
+    FileReader.prototype.readAsDataURL = function delayedRead(blob) {
+      window.setTimeout(() => originalRead.call(this, blob), 180);
+    };
+  });
+  await editor.evaluate((element) => {
+    const binary = atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([bytes], '延迟图片.png', { type: 'image/png' }));
+    element.dispatchEvent(new ClipboardEvent('paste', {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: transfer,
+    }));
+  });
+
+  await page.getByRole('button', { name: '笔记', exact: true }).click();
+  await page.getByRole('button', { name: /新建笔记/ }).click();
+  await editor.fill('# 新笔记');
+  await page.waitForTimeout(350);
+  await expect(editor).toHaveValue('# 新笔记');
+
+  await page.getByRole('button', { name: '笔记', exact: true }).click();
+  await page.getByRole('button', { name: /原笔记/ }).click();
+  await expect(editor).toHaveValue(/# 原笔记[\s\S]+!\[延迟图片\]\(zhijian-image:\/\/[a-z0-9-]+\)/u);
+});
+
 test('mobile view can switch from editor to preview', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'mobile-only behavior');
   await page.goto('/studio/');

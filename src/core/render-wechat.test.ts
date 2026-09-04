@@ -74,6 +74,21 @@ npm run build
     expect(result.warnings.map((warning) => warning.code)).toContain('image-placeholder');
   });
 
+  it('embeds a managed local image as self-contained rich text', () => {
+    const uri = 'zhijian-image://6e304f32-97fd-45ff-b803-630150761b44';
+    const dataUrl = 'data:image/png;base64,iVBORw0KGgo=';
+    const document = parseDocument(`![山水插图](${uri})`);
+    const result = renderWechat(document, getWechatTheme('editorial-notes'), undefined, {
+      imageSources: new Map([[uri, dataUrl]]),
+    });
+
+    expect(result.html).toContain('data-zhijian-image="local"');
+    expect(result.html).toContain(`src="${dataUrl}"`);
+    expect(result.html).toContain('alt="山水插图"');
+    expect(result.html).not.toContain('图｜山水插图');
+    expect(result.warnings.map((warning) => warning.code)).not.toContain('image-placeholder');
+  });
+
   it('rejects theme colors that could inject arbitrary inline CSS', () => {
     const theme = getWechatTheme('editorial-notes');
 

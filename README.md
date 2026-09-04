@@ -92,7 +92,7 @@ type ContentDocument = {
 
 行内渲染器支持 `text`、`strong`、`emphasis`、`delete`、`inlineCode`、`break`、`link`、`linkReference`、`image`、`imageReference` 和脚注引用。完整式、折叠式和快捷式引用链接都通过定义索引解析；链接保留可见文字和 URL，图片退化为可读的图片说明，不尝试上传或嵌入资源。
 
-公众号由 `renderWechat(document, theme, styleConfig)` 遍历同一棵 mdast，生成带内联样式的标题、段落、步骤、引用、表格、代码块和脚注。`theme` 定义安全的基础视觉协议，`styleConfig` 只允许经过 Zod 校验的字体、字号、行距、六位十六进制主题色、标题样式和代码明暗。用户文字先进行 HTML 转义，行内链接与引用式链接都只允许 `http`、`https`、`mailto`、`tel` 和页内锚点协议；除用于表格换行的单个 `<br>` 外，原始 HTML 一律丢弃。远程图片不会在预览阶段加载，而是保留为插图位置说明，避免破坏本地优先的隐私边界。
+公众号由 `renderWechat(document, theme, styleConfig, assets)` 遍历同一棵 mdast，生成带内联样式的标题、段落、步骤、引用、表格、代码块和脚注。`theme` 定义安全的基础视觉协议，`styleConfig` 只允许经过 Zod 校验的字体、字号、行距、六位十六进制主题色、标题样式和代码明暗。用户文字先进行 HTML 转义，行内链接与引用式链接都只允许 `http`、`https`、`mailto`、`tel` 和页内锚点协议；除用于表格换行的单个 `<br>` 外，原始 HTML 一律丢弃。编辑器支持选择图片或把剪贴板图片直接粘进 Markdown；图片保存在浏览器 IndexedDB，预览与复制时才通过受控的 `assets` 映射还原成自包含 `<img>`。远程图片仍只保留为插图位置说明，不在预览阶段加载。
 
 ### 3. 主题是经过校验的规则对象
 
@@ -210,8 +210,8 @@ SITE_URL=https://example.com npm run build
 - 小红书结果是普通文本，不声称平台支持真正的颜色、字号或粗体。
 - 公众号结果只包含渲染器生成的标签与内联样式，用户原始 HTML 不会透传。
 - 原始 HTML 会被移除，不进入复制结果。
-- 笔记仅保存在当前浏览器的 `localStorage`，不会在不同浏览器或设备间自动同步。
-- 可导出 JSON 备份，在另一浏览器手动导入；导入会替换当前浏览器里的整套笔记。
+- 笔记仅保存在当前浏览器的 `localStorage`，本地图片保存在 IndexedDB，不会在不同浏览器或设备间自动同步。
+- 可导出 JSON 备份，在另一浏览器手动导入；导入会替换当前浏览器里的整套笔记。当前 JSON 备份不包含图片文件，跨浏览器迁移时需重新插图。
 - 当前版本不自动发布、不上传文案、不接入 AI 或违禁词接口。
 
 视觉系统和响应式规则见 [DESIGN.md](./DESIGN.md)，主题贡献方式见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
@@ -219,7 +219,7 @@ SITE_URL=https://example.com npm run build
 ## Roadmap
 
 - 更多公众号主题与段落组件
-- 本地图片插入与发布前替换流程
+- 本地图片随 JSON 备份导出与恢复
 - 更多可组合主题与内容模板
 - 主题配置导入、导出与社区共享
 

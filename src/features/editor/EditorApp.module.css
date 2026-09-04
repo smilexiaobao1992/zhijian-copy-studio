@@ -98,6 +98,7 @@
 .themeOption:active,
 .templateOption:active,
 .themeShortcut:active,
+.imageButton:active,
 .organizeButton:active,
 .copyParts button:active,
 .createNoteButton:active,
@@ -311,6 +312,19 @@
   font-size: 12px;
   font-weight: 700;
   transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease, transform 120ms ease;
+}
+
+.imageButton {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-2);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
 }
 
 .organizeButton:disabled {
@@ -1424,6 +1438,7 @@
   .railButton:hover,
   .railLink:hover,
   .themeShortcut:hover,
+  .imageButton:hover,
   .organizeButton:hover:not(:disabled),
   .iconButton:hover,
   .themeOption:hover,
@@ -1733,6 +1748,10 @@
   }
 
   .organizeButton {
+    min-height: 38px;
+  }
+
+  .imageButton {
     min-height: 38px;
   }
 
