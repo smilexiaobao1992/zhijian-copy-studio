@@ -1,5 +1,7 @@
 # Social Copy Studio design system
 
+The editor and public landing page share the paper, ink, and vermilion tokens but use different composition rules. The editor remains a quiet, cardless workbench; the landing page may use compact editorial demonstrations and restrained motion to explain the product.
+
 ## 1. Visual theme and atmosphere
 
 The product is a quiet editorial workbench: warm paper, dark ink, and one vermilion action color. It should feel closer to a careful writing desk than a SaaS dashboard. The interface stays restrained so the creator's copy remains the strongest visual element. The WeChat output extends this into a Chinese independent-magazine page rather than a generic colorful template.
@@ -50,10 +52,10 @@ Depth comes from background lightness steps. Only the reading sheet uses a restr
 - Do separate product UI tokens from exported content themes.
 - Do keep WeChat theme data separate from the renderer-owned HTML allowlist.
 - Do show output limitations as plain language beside the preview.
-- Do give every marketing section one content-specific geometric diagram instead of decorative filler.
+- Do give every marketing section one content-specific demonstration or geometric diagram instead of decorative filler.
 - Do preserve keyboard navigation and visible focus.
-- Do not draw browser or phone chrome.
-- Do not use gradients, glass effects, or decorative blobs.
+- Do keep the editor preview free of fake browser or phone chrome; the landing page may use compact phone-shaped output demonstrations.
+- Do not use gradients, glass effects, or decorative blobs in the editor. The landing page may use a low-opacity radial glow inside the dark channel section.
 - Do not show more than one primary action in a panel.
 - Do not hide platform output behind a modal.
 

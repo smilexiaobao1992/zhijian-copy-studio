@@ -15,6 +15,13 @@ test('landing page shows the live formatting sample in the first viewport', asyn
   await expect.poll(() => page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   )).toBe(0);
+
+  const paperTheme = page.getByRole('tab', { name: /03 纸间/ });
+  const wechatTheme = page.getByRole('tab', { name: /05 经典手记/ });
+  await wechatTheme.click();
+  await expect(wechatTheme).toHaveAttribute('aria-selected', 'true');
+  await expect(paperTheme).toHaveAttribute('aria-selected', 'false');
+  await expect(page.getByText('WECHAT · RICH TEXT', { exact: true })).toBeVisible();
 });
 
 test('formats Markdown and switches themes', async ({ page }, testInfo) => {

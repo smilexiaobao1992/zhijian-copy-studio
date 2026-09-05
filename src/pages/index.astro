@@ -2,6 +2,94 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import styles from '../styles/landing.module.css';
 
+const features = [
+  'Markdown 输入',
+  '四套小红书主题',
+  '公众号安全富文本',
+  '实时预览',
+  '一键复制',
+  '图片直接粘贴',
+  '草稿留在本地',
+  '开源',
+  '无需登录',
+  '左右对照',
+];
+
+const themes = [
+  {
+    id: 'qingjian',
+    name: '清简',
+    tag: '观点和知识',
+    desc: '克制的黑白灰，只用留白和粗细区分层级，适合观点输出与知识分享。',
+    accent: '#1b1915',
+    bg: '#ffffff',
+    fg: '#1b1915',
+    soft: '#f1efe9',
+    prefix: '▎',
+    section: '§',
+    list: ['①', '②', '③'],
+    channel: 'XIAOHONGSHU · TEXT',
+  },
+  {
+    id: 'xinhao',
+    name: '信号',
+    tag: 'AI 和数码',
+    desc: '高对比的电光蓝与等宽数字，像一份技术简报，适合 AI、数码与效率工具。',
+    accent: '#1f5eff',
+    bg: '#f4f7ff',
+    fg: '#101828',
+    soft: '#e3eaff',
+    prefix: '▌',
+    section: '▌',
+    list: ['❶', '❷', '❸'],
+    channel: 'XIAOHONGSHU · TEXT',
+  },
+  {
+    id: 'zhijian',
+    name: '纸间',
+    tag: '生活方式',
+    desc: '米色纸面与朱砂点缀，带一点刊物的温度，适合生活、阅读与随笔。',
+    accent: '#c4402a',
+    bg: '#f7f1e5',
+    fg: '#2b2620',
+    soft: '#ede4d2',
+    prefix: '◆',
+    section: '◆',
+    list: ['一', '二', '三'],
+    channel: 'XIAOHONGSHU · TEXT',
+  },
+  {
+    id: 'buxu',
+    name: '步序',
+    tag: '清单和教程',
+    desc: '编号醒目、步骤分明，每一步都有落点，适合教程、清单与操作指南。',
+    accent: '#0f8a5f',
+    bg: '#f1faf5',
+    fg: '#0f2a1f',
+    soft: '#d9f0e4',
+    prefix: 'STEP',
+    section: 'STEP',
+    list: ['01', '02', '03'],
+    channel: 'XIAOHONGSHU · TEXT',
+  },
+  {
+    id: 'notes',
+    name: '经典手记',
+    tag: '公众号 · 观点与深度',
+    desc: '带字号、颜色与间距的安全富文本，像一本编辑部手记，适合公众号长文。',
+    accent: '#8a3b2c',
+    bg: '#fbf8f2',
+    fg: '#1d1a16',
+    soft: '#f0e9dc',
+    prefix: '',
+    section: '章节',
+    list: ['1.', '2.', '3.'],
+    channel: 'WECHAT · RICH TEXT',
+  },
+];
+
+const initialTheme = themes[2]!;
+
 const applicationSchema = {
   '@type': 'WebApplication',
   '@id': Astro.site ? new URL('/#application', Astro.site).href : '#application',
@@ -12,17 +100,13 @@ const applicationSchema = {
   operatingSystem: 'Any',
   browserRequirements: 'Requires JavaScript',
   isAccessibleForFree: true,
-  offers: {
-    '@type': 'Offer',
-    price: 0,
-    priceCurrency: 'CNY',
-  },
+  offers: { '@type': 'Offer', price: 0, priceCurrency: 'CNY' },
   featureList: [
     'Markdown 文案解析',
     '小红书纯文本排版',
     '微信公众号富文本排版',
-    '四套结构化主题',
-    '公众号编辑部手记主题',
+    '五套结构化主题',
+    '本地图片粘贴与富文本复制',
     '本地草稿保存',
     '实时左右对照预览',
   ],
@@ -35,162 +119,340 @@ const applicationSchema = {
   description="开源、本地优先的小红书与微信公众号排版器。输入 Markdown，切换渠道和主题，实时预览并复制发布。"
   structuredData={applicationSchema}
 >
-  <header class={styles.header}>
-    <a class={styles.wordmark} href="/" aria-label="纸间排版首页">
-      <span aria-hidden="true">纸</span>
-      <strong>纸间排版</strong>
-    </a>
-    <nav aria-label="主导航">
-      <a href="#principles">设计原则</a>
-      <a href="#roadmap">路线</a>
-      <a class={styles.navAction} href="/studio/">打开编辑器</a>
-    </nav>
+  <div class={styles.grain} aria-hidden="true"></div>
+
+  <header class={styles.header} data-site-header>
+    <div class={styles.navInner}>
+      <a class={styles.wordmark} href="/" aria-label="纸间排版首页">
+        <span class={styles.logoSeal} aria-hidden="true">纸</span>
+        <strong>纸间排版</strong>
+        <small>OPEN SOURCE · LOCAL FIRST</small>
+      </a>
+      <nav aria-label="主导航">
+        <a href="#principles">原则</a>
+        <a href="#channels">渠道</a>
+        <a href="#themes">主题</a>
+        <a class={styles.navAction} href="/studio/"><span>进入排版器</span></a>
+      </nav>
+    </div>
   </header>
 
   <main id="main-content">
     <section class={styles.hero}>
-      <div class={styles.paperMarks} aria-hidden="true">
-        <span>01 / DRAFT</span>
-        <span>LOCAL WORKSPACE</span>
-        <span>2026</span>
-      </div>
-      <div class={styles.heroCopy}>
-        <p class={styles.kicker}>OPEN SOURCE · LOCAL FIRST</p>
-        <h1>把一份文案，排成读者愿意停下来的样子。</h1>
-        <p class={styles.lede}>输入 Markdown 或普通文案，选择适合内容气质的主题，让标题、重点、步骤和引用各归其位，复制后即可发布。</p>
-        <div class={styles.heroActions}>
-          <a class={styles.primaryAction} href="/studio/">开始排版 <span aria-hidden="true">→</span></a>
-          <span>编辑时自动保存当前草稿</span>
+      <div class={styles.ruledPaper} aria-hidden="true"></div>
+      <div class={styles.marginLine} aria-hidden="true"></div>
+      <div class={styles.heroInner}>
+        <div class={styles.heroCopy}>
+          <p class={styles.kicker}><i></i> OPEN SOURCE · LOCAL FIRST</p>
+          <h1 aria-label="把一份文案，排成读者愿意停下来的样子。">
+            把一份文案，<br />
+            <span class={styles.headlineMark}>排成读者愿意</span><br />
+            停下来的样子<span class={styles.redText}>。</span>
+          </h1>
+          <p class={styles.lede}>输入 Markdown 或普通文案，选择适合内容气质的主题，让标题、重点、步骤和引用各归其位，复制后即可发布到<strong>小红书</strong>与<strong>公众号</strong>。</p>
+          <div class={styles.heroActions}>
+            <a class={styles.primaryAction} href="/studio/"><span>进入纸间排版</span><b aria-hidden="true">→</b></a>
+            <a class={styles.textAction} href="#channels">看看两种输出 ↓</a>
+          </div>
+          <dl class={styles.heroFacts}>
+            <div><dt>5</dt><dd>套主题</dd></div>
+            <div><dt>2</dt><dd>个渠道</dd></div>
+            <div><dt>0</dt><dd>服务端上传</dd></div>
+          </dl>
         </div>
-      </div>
 
-      <div class={styles.transformDemo} aria-label="排版转换示例">
-        <span class={styles.demoIndex} aria-hidden="true">LIVE / 01</span>
-        <div class={styles.sourceSample}>
-          <header><span>原稿</span><small>MARKDOWN · 194 字</small></header>
-          <div class={styles.sourceBody} aria-hidden="true">
-            <span># AI 文案读起来太挤怎么办</span>
-            <span>直接复制 AI 输出，经常会遇到段落太密、重点不清的问题。</span>
-            <span>## 先做三件事</span>
-            <span>1. 一段只讲一个观点</span>
-            <span>2. 把操作步骤改成列表</span>
+        <div class={styles.liveDemoWrap} data-reveal>
+          <div class={styles.backSheet} aria-hidden="true"></div>
+          <div class={styles.liveDemo} aria-label="排版转换示例">
+            <section class={styles.demoEditor}>
+              <header><span>原稿 · MARKDOWN</span><b data-demo-count>0 字</b></header>
+              <pre data-demo-source aria-label="示例 Markdown 原稿"></pre>
+            </section>
+            <section class={styles.demoPreview} data-demo-preview>
+              <header>
+                <span>小红书 · 即时预览</span>
+                <div class={styles.demoDots} aria-label="示例主题">
+                  {themes.map((theme, index) => (
+                    <button
+                      type="button"
+                      style={`--dot:${theme.accent}`}
+                      data-demo-theme={theme.id}
+                      data-active={index === 1 ? '' : undefined}
+                      aria-label={theme.name}
+                    ></button>
+                  ))}
+                </div>
+              </header>
+              <div class={styles.demoOutput}>
+                <h2><i>▌</i> AI 文案读起来太挤怎么办</h2>
+                <p>直接复制 AI 输出，经常会遇到<span>段落太密、重点不清</span>的问题。</p>
+                <h3><b>▌</b> 先做三件事</h3>
+                <ol><li>一段只讲一个观点</li><li>把操作步骤改成列表</li><li>给关键句加一个重点</li></ol>
+                <blockquote>排版不是装饰，是替读者省力。</blockquote>
+              </div>
+              <footer><span data-demo-theme-name>信号 · AI 和数码</span><strong>适合复制发布</strong></footer>
+            </section>
           </div>
+          <span class={styles.copyBadge}>⌘ C · 一键复制</span>
         </div>
-        <div class={styles.transformMark} aria-hidden="true"><i></i><span>结构识别完成</span></div>
-        <div class={styles.outputSample}>
-          <header><span>小红书</span><small>信号主题 · 即时预览</small></header>
-          <div class={styles.outputBody}>
-            <span>▌ AI 文案读起来太挤怎么办</span>
-            <span>直接复制 AI 输出，经常会遇到段落太密、重点不清的问题。</span>
-            <span>▌ 先做三件事</span>
-            <span>❶ 一段只讲一个观点<br />❷ 把操作步骤改成列表</span>
-          </div>
-          <footer><span>3 个标题 · 2 个步骤</span><strong>适合复制发布</strong></footer>
-        </div>
-        <span class={styles.demoFolio} aria-hidden="true">P. 01</span>
       </div>
     </section>
+
+    <div class={styles.marquee} aria-label="产品功能">
+      <div class={styles.marqueeTrack}>
+        {[...features, ...features].map((feature) => <span>{feature}<i aria-hidden="true">✦</i></span>)}
+      </div>
+    </div>
 
     <section class={styles.principles} id="principles" aria-labelledby="principles-heading">
-      <div class={styles.sectionIndex}>01 / 原则</div>
-      <div class={styles.principleLead}>
-        <h2 id="principles-heading">排版不是装饰，它是内容结构的第二次写作。</h2>
-        <div class={styles.structureDiagram} aria-hidden="true">
-          <div class={styles.rawStructure}>
-            <small>原稿</small>
-            <i></i><i></i><i></i><i></i>
+      <div class={styles.sectionInner}>
+        <p class={styles.eyebrow}><span>01</span><i></i>原则</p>
+        <h2 id="principles-heading">工具应该安静地<span>退到文字后面</span>。</h2>
+        <div class={styles.principleGrid}>
+          <article data-reveal>
+            <span class={styles.cardNo}>01</span>
+            <svg viewBox="0 0 80 80" aria-hidden="true"><rect x="14" y="10" width="40" height="52" rx="2"></rect><rect class={styles.svgAccent} x="26" y="18" width="40" height="52" rx="2"></rect><path d="M22 22h20M22 30h24M22 38h16"></path></svg>
+            <h3>原文独立</h3><p>切换主题只改变输出，随时可以回到最初的表达。</p><i class={styles.cardRule}></i>
+          </article>
+          <article data-reveal>
+            <span class={styles.cardNo}>02</span>
+            <svg viewBox="0 0 80 80" aria-hidden="true"><rect x="8" y="14" width="64" height="52" rx="2"></rect><line class={styles.svgAccent} x1="40" y1="14" x2="40" y2="66"></line><path d="M16 26h14M16 34h18M16 42h12"></path><path class={styles.svgAccentThick} d="M48 26h16M48 36h12M48 46h16"></path></svg>
+            <h3>左右对照</h3><p>左侧调整内容结构，右侧同步呈现最终复制结果。</p><i class={styles.cardRule}></i>
+          </article>
+          <article data-reveal>
+            <span class={styles.cardNo}>03</span>
+            <svg viewBox="0 0 80 80" aria-hidden="true"><circle class={styles.svgDashed} cx="40" cy="40" r="26"></circle><rect x="28" y="28" width="24" height="24" rx="2"></rect><path class={styles.svgAccentThick} d="M33 40l5 5 9-10"></path></svg>
+            <h3>随时续写</h3><p>草稿保存在当前设备，刷新页面也能继续编辑。</p><i class={styles.cardRule}></i>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class={styles.channels} id="channels" aria-labelledby="channels-heading">
+      <div class={styles.channelGlow} aria-hidden="true"></div>
+      <div class={styles.sectionInner}>
+        <p class={styles.eyebrow}><span>02</span><i></i>渠道</p>
+        <h2 id="channels-heading">同一份结构，<span>两个输出方向</span>。</h2>
+        <p class={styles.channelLead}>小红书保留平台友好的符号层级，公众号生成带字号、颜色和间距的安全富文本，两种结果都可以直接复制。</p>
+        <div class={styles.channelGrid}>
+          <article data-reveal>
+            <header><span class={styles.statusPink}><i></i>现在可用</span><b>TEXT · SYMBOLS</b></header>
+            <h3>小红书</h3>
+            <p>四套主题、三个内容模板、实时预览、一键复制。符号层级在任何端都能稳定显示。</p>
+            <ul><li>标题前缀与步骤编号</li><li>重点句用括注与符号强调</li><li>自动整理空行与段落密度</li></ul>
+            <div class={styles.phone} aria-hidden="true">
+              <i></i><div><strong>▌ AI 文案读起来太挤怎么办</strong><p>直接复制 AI 输出，经常会遇到【段落太密、重点不清】的问题。</p><b>▌ 先做三件事</b><p>❶ 一段只讲一个观点<br />❷ 把操作步骤改成列表<br />❸ 给关键句加一个重点</p><em>#排版 #写作 #AI工具</em></div>
+            </div>
+          </article>
+          <article data-reveal>
+            <header><span class={styles.statusGreen}><i></i>现在可用</span><b>RICH TEXT · INLINE CSS</b></header>
+            <h3>公众号</h3>
+            <p>经典手记主题、安全内联样式、实时预览与富文本复制。图片也会随正文一起复制。</p>
+            <ul><li>字号、颜色、间距全部内联</li><li>本地图片直接粘贴到正文</li><li>引用、分隔线与小标题成套设计</li></ul>
+            <div class={`${styles.phone} ${styles.wechatPhone}`} aria-hidden="true">
+              <i></i><div><strong>AI 文案读起来太挤怎么办</strong><p>直接复制 AI 输出，经常会遇到<span>段落太密、重点不清</span>的问题。</p><b>先做三件事</b><p>1. 一段只讲一个观点<br />2. 把操作步骤改成列表</p><blockquote>排版不是装饰，是替读者省力。</blockquote></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class={styles.themes} id="themes" aria-labelledby="themes-heading">
+      <div class={styles.sectionInner}>
+        <p class={styles.eyebrow}><span>03</span><i></i>主题</p>
+        <h2 id="themes-heading">四种文案性格，<span>一份刊物气质</span>。</h2>
+        <div class={styles.themeLayout}>
+          <div>
+            <div class={styles.themeList} role="tablist" aria-label="排版主题">
+              {themes.map((theme, index) => (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={index === 2 ? 'true' : 'false'}
+                  aria-controls="theme-preview"
+                  tabindex={index === 2 ? 0 : -1}
+                  class={styles.themeControl}
+                  data-theme-control={theme.id}
+                >
+                  <i style={`--theme-accent:${theme.accent}`}></i><small>0{index + 1}</small><strong>{theme.name}</strong><span>{theme.tag}</span>{theme.id === 'notes' && <em>公众号</em>}
+                </button>
+              ))}
+            </div>
+            <p class={styles.themeDescription} data-theme-description>{initialTheme.desc}</p>
           </div>
-          <span class={styles.diagramArrow}>→</span>
-          <div class={styles.refinedStructure}>
-            <small>结构化</small>
-            <b></b><i></i><i></i><em></em>
+          <div class={styles.themePreviewWrap} data-reveal>
+            <div class={styles.themePreviewBack} data-theme-back></div>
+            <article
+              id="theme-preview"
+              role="tabpanel"
+              aria-live="polite"
+              class={styles.themePreview}
+              data-theme-preview
+              style={`--preview-accent:${initialTheme.accent};--preview-bg:${initialTheme.bg};--preview-fg:${initialTheme.fg};--preview-soft:${initialTheme.soft}`}
+            >
+              <header><span data-theme-channel>{initialTheme.channel}</span><b data-theme-id>纸间</b></header>
+              <div class={styles.themeSample} data-theme-sample>
+                <h3><i data-theme-prefix>{initialTheme.prefix}</i> 写给第一次做内容的人</h3>
+                <p>不要一上来就追求爆款，先让读者<span>看完第一段</span>。</p>
+                <h4><b data-theme-section>{initialTheme.section}</b> 三个开头的写法</h4>
+                <ol>
+                  <li><i data-theme-list="0">一</i>从一个具体的场景说起</li>
+                  <li><i data-theme-list="1">二</i>先给结论，再给理由</li>
+                  <li><i data-theme-list="2">三</i>用一个反常识的数字</li>
+                </ol>
+                <blockquote>好的排版让人忘记排版的存在。</blockquote>
+              </div>
+              <div class={styles.themeStamp} data-theme-stamp>纸间</div>
+            </article>
           </div>
         </div>
       </div>
-      <dl class={styles.principleList}>
-        <div><dt>原文独立</dt><dd>切换主题只改变输出，随时可以回到最初的表达。</dd></div>
-        <div><dt>左右对照</dt><dd>左侧调整内容结构，右侧同步呈现最终复制结果。</dd></div>
-        <div><dt>随时续写</dt><dd>草稿保存在当前设备，刷新页面也能继续编辑。</dd></div>
-      </dl>
     </section>
 
-    <section class={styles.roadmap} id="roadmap" aria-labelledby="roadmap-heading">
-      <div class={styles.sectionIndex}>02 / 渠道</div>
-      <div>
-        <h2 id="roadmap-heading">同一份结构，两个输出方向。</h2>
-        <p>小红书保留平台友好的符号层级，公众号生成带字号、颜色和间距的安全富文本，两种结果都可以直接复制。</p>
-        <div class={styles.channelFlow} aria-hidden="true">
-          <span class={styles.flowSource}>MD</span>
-          <i></i>
-          <div><span>TXT</span><span>HTML</span></div>
-        </div>
+    <section class={styles.closing}>
+      <div class={styles.closingPanel} data-reveal>
+        {['▌', '❶', '◆', '»', '§', '✦'].map((glyph, index) => <i style={`--glyph-x:${8 + index * 16}%;--glyph-y:${index % 2 ? 14 : 74}%;--glyph-delay:${index * 0.7}s;--glyph-rotate:${(index - 3) * 8}deg`}>{glyph}</i>)}
+        <h2>从第一段开始，<br />让重点<span>自己站出来</span>。</h2>
+        <p>写下原文，选择主题，复制一份可以直接发布的正文。</p>
+        <a href="/studio/">进入纸间排版 <span aria-hidden="true">→</span></a>
+        <small>免费 · 开源 · 数据不离开你的设备</small>
       </div>
-      <div class={styles.channelLedger}>
-        <article data-status="ready">
-          <span>现在可用</span>
-          <h3>小红书</h3>
-          <p>四套主题、三个内容模板、实时预览、一键复制。</p>
-        </article>
-        <article data-status="ready">
-          <span>现在可用</span>
-          <h3>公众号</h3>
-          <p>编辑部手记主题、安全内联样式、实时预览与富文本复制。</p>
-        </article>
-      </div>
-    </section>
-
-    <section class={styles.themeStrip} aria-labelledby="themes-heading">
-      <div>
-        <span class={styles.sectionIndex}>03 / 主题</span>
-        <h2 id="themes-heading">四种文案性格，一份刊物气质。</h2>
-      </div>
-      <ul>
-        <li style="--theme-color:#C6533D">
-          <i></i><div><strong>清简</strong><span>观点和知识</span></div>
-          <div class={styles.themeGlyph} aria-hidden="true"><b>01</b><em></em><em></em><em></em></div>
-        </li>
-        <li style="--theme-color:#25666B">
-          <i></i><div><strong>信号</strong><span>AI 和数码</span></div>
-          <div class={styles.themeGlyph} aria-hidden="true"><b>▌</b><em></em><em></em><em></em></div>
-        </li>
-        <li style="--theme-color:#B67A3C">
-          <i></i><div><strong>纸间</strong><span>生活方式</span></div>
-          <div class={styles.themeGlyph} aria-hidden="true"><b>摘</b><em></em><em></em><em></em></div>
-        </li>
-        <li style="--theme-color:#4D647E">
-          <i></i><div><strong>步序</strong><span>清单和教程</span></div>
-          <div class={styles.themeGlyph} aria-hidden="true"><b>①</b><em></em><em></em><em></em></div>
-        </li>
-        <li data-channel="wechat" style="--theme-color:#B44735">
-          <i></i><div><strong>编辑部手记</strong><span>公众号观点与深度内容</span></div>
-          <div class={styles.themeGlyph} aria-hidden="true"><b>刊</b><em></em><em></em><em></em></div>
-        </li>
-      </ul>
-    </section>
-
-    <section class={styles.finalCta}>
-      <div class={styles.ctaBackdrop} aria-hidden="true">
-        <div class={styles.ctaDraftSheet}><small>MARKDOWN</small><i></i><i></i><i></i><i></i></div>
-        <span>→</span>
-        <div class={styles.ctaReadySheet}><small>READY</small><b></b><i></i><i></i><i></i></div>
-      </div>
-      <div class={styles.ctaCopy}>
-        <p>从第一段开始，让重点自己站出来。</p>
-        <span>写下原文，选择主题，复制一份可以直接发布的正文。</span>
-      </div>
-      <div class={styles.ctaSequence} aria-hidden="true"><span>写</span><i></i><span>排</span><i></i><span>发</span></div>
-      <a href="/studio/">进入纸间排版 <span aria-hidden="true">→</span></a>
     </section>
   </main>
 
   <footer class={styles.footer}>
-    <span>纸间排版 · Social Copy Studio</span>
-    <nav aria-label="页脚导航">
-      <a href="/privacy/">隐私</a>
-      <a href="/terms/">使用说明</a>
-      <a href="/studio/">编辑器</a>
-      <a href="https://yaoyiqian.com/" target="_blank" rel="noopener noreferrer">友链 · 摇一摇</a>
-    </nav>
-    <span>MIT License · 2026</span>
+    <div>
+      <a class={styles.footerBrand} href="/"><span aria-hidden="true">纸</span><strong>纸间排版</strong><small>ZHIJIAN</small></a>
+      <nav aria-label="页脚导航">
+        <a href="#principles">原则</a><a href="#channels">渠道</a><a href="#themes">主题</a><a href="/studio/">排版器</a><a href="/privacy/">隐私</a><a href="/terms/">说明</a><a href="https://yaoyiqian.com/" target="_blank" rel="noopener noreferrer">友链 · 摇一摇</a>
+      </nav>
+      <span>© 2026 纸间 · Local First</span>
+    </div>
   </footer>
+
+  <script is:inline define:vars={{ themes }}>
+    const demoMarkdown = `# AI 文案读起来太挤怎么办
+
+直接复制 AI 输出，经常会遇到**段落太密、重点不清**的问题。
+
+## 先做三件事
+
+- 一段只讲一个观点
+- 把操作步骤改成列表
+- 给关键句加一个重点
+
+> 排版不是装饰，是替读者省力。`;
+
+    const source = document.querySelector('[data-demo-source]');
+    const count = document.querySelector('[data-demo-count]');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let sourceLength = 0;
+    let typingTimer;
+
+    const typeDemo = () => {
+      if (!(source instanceof HTMLElement) || !(count instanceof HTMLElement)) return;
+      sourceLength += 1;
+      source.textContent = demoMarkdown.slice(0, sourceLength);
+      count.textContent = `${sourceLength} 字`;
+      if (sourceLength < demoMarkdown.length) {
+        const character = demoMarkdown[sourceLength - 1];
+        const delay = character === '\n' ? 100 : /[，。、]/.test(character) ? 72 : 22;
+        typingTimer = window.setTimeout(typeDemo, delay);
+      } else {
+        typingTimer = window.setTimeout(() => {
+          sourceLength = 0;
+          typeDemo();
+        }, 8000);
+      }
+    };
+
+    if (!reduceMotion) typeDemo();
+    else if (source instanceof HTMLElement && count instanceof HTMLElement) {
+      source.textContent = demoMarkdown;
+      count.textContent = `${demoMarkdown.length} 字`;
+    }
+
+    const themeById = new Map(themes.map((theme) => [theme.id, theme]));
+    const themeControls = [...document.querySelectorAll('[data-theme-control]')];
+    const themePreview = document.querySelector('[data-theme-preview]');
+    const themeBack = document.querySelector('[data-theme-back]');
+    const themeDescription = document.querySelector('[data-theme-description]');
+
+    const applyTheme = (themeId) => {
+      const theme = themeById.get(themeId);
+      if (!theme || !(themePreview instanceof HTMLElement)) return;
+      themePreview.style.setProperty('--preview-accent', theme.accent);
+      themePreview.style.setProperty('--preview-bg', theme.bg);
+      themePreview.style.setProperty('--preview-fg', theme.fg);
+      themePreview.style.setProperty('--preview-soft', theme.soft);
+      if (themeBack instanceof HTMLElement) themeBack.style.background = theme.soft;
+      const setText = (selector, value) => {
+        const element = themePreview.querySelector(selector);
+        if (element instanceof HTMLElement) element.textContent = value;
+      };
+      setText('[data-theme-channel]', theme.channel);
+      setText('[data-theme-id]', theme.name);
+      setText('[data-theme-prefix]', theme.prefix);
+      setText('[data-theme-section]', theme.section);
+      setText('[data-theme-stamp]', theme.name.slice(0, 2));
+      theme.list.forEach((item, index) => setText(`[data-theme-list="${index}"]`, item));
+      if (themeDescription instanceof HTMLElement) themeDescription.textContent = theme.desc;
+      themeControls.forEach((control) => {
+        const active = control.getAttribute('data-theme-control') === themeId;
+        control.setAttribute('aria-selected', String(active));
+        control.setAttribute('tabindex', active ? '0' : '-1');
+      });
+      if (!reduceMotion) themePreview.animate([{ opacity: 0.45, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 340, easing: 'cubic-bezier(.22,1,.36,1)' });
+    };
+
+    themeControls.forEach((control, index) => {
+      const select = () => applyTheme(control.getAttribute('data-theme-control'));
+      control.addEventListener('click', select);
+      control.addEventListener('mouseenter', select);
+      control.addEventListener('keydown', (event) => {
+        if (!(event instanceof KeyboardEvent) || !['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+        event.preventDefault();
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        const next = themeControls[(index + direction + themeControls.length) % themeControls.length];
+        if (next instanceof HTMLElement) {
+          next.focus();
+          applyTheme(next.getAttribute('data-theme-control'));
+        }
+      });
+    });
+
+    const demoThemes = [...document.querySelectorAll('[data-demo-theme]')];
+    const demoPreview = document.querySelector('[data-demo-preview]');
+    const demoName = document.querySelector('[data-demo-theme-name]');
+    const applyDemoTheme = (themeId) => {
+      const theme = themeById.get(themeId);
+      if (!theme || !(demoPreview instanceof HTMLElement)) return;
+      demoPreview.style.setProperty('--demo-accent', theme.accent);
+      demoPreview.style.setProperty('--demo-bg', theme.bg);
+      demoPreview.style.setProperty('--demo-soft', theme.soft);
+      if (demoName instanceof HTMLElement) demoName.textContent = `${theme.name} · ${theme.tag}`;
+      demoThemes.forEach((dot) => dot.toggleAttribute('data-active', dot.getAttribute('data-demo-theme') === themeId));
+    };
+    demoThemes.forEach((dot) => dot.addEventListener('click', () => applyDemoTheme(dot.getAttribute('data-demo-theme'))));
+
+    const header = document.querySelector('[data-site-header]');
+    const updateHeader = () => header?.classList.toggle('scrolled', window.scrollY > 40);
+    updateHeader();
+    window.addEventListener('scroll', updateHeader, { passive: true });
+
+    const revealItems = document.querySelectorAll('[data-reveal]');
+    if ('IntersectionObserver' in window && !reduceMotion) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px' });
+      revealItems.forEach((item) => observer.observe(item));
+    } else revealItems.forEach((item) => item.classList.add('revealed'));
+
+    document.addEventListener('astro:before-preparation', () => window.clearTimeout(typingTimer));
+  </script>
 </BaseLayout>
