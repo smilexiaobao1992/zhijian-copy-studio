@@ -150,7 +150,7 @@ export function EditorApp() {
   const [imageNotice, setImageNotice] = useState<string | null>(null);
   const copyTimerRef = useRef<number | null>(null);
   const confirmationResolverRef = useRef<((accepted: boolean) => void) | null>(null);
-  const persistedRevisionRef = useRef(state.workspace.revision);
+  const persistedWorkspaceRef = useRef(state.workspace);
   const workspaceRef = useRef(state.workspace);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -185,17 +185,38 @@ export function EditorApp() {
       return;
     }
     setSaveState('saving');
-    const timer = window.setTimeout(() => {
+    function persist(): boolean {
       try {
-        saveWorkspace(state.workspace);
-        persistedRevisionRef.current = state.workspace.revision;
+        const workspace = workspaceRef.current;
+        saveWorkspace(workspace, persistedWorkspaceRef.current);
+        persistedWorkspaceRef.current = workspace;
         setSaveState('saved');
+        return true;
       } catch (error) {
         setSaveState(error instanceof WorkspaceConflictError ? 'conflict' : 'error');
+        return false;
       }
-    }, 420);
+    }
+    const timer = window.setTimeout(persist, 420);
+    function beforeUnload(event: BeforeUnloadEvent) {
+      if (!persist()) {
+        // Only warn when the last edit cannot be saved; never force a conflicting write.
+        event.preventDefault();
+      }
+    }
+    function onVisibilityChange() {
+      if (globalThis.document.visibilityState === 'hidden') persist();
+    }
+    window.addEventListener('beforeunload', beforeUnload);
+    window.addEventListener('pagehide', persist);
+    globalThis.document.addEventListener('visibilitychange', onVisibilityChange);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('beforeunload', beforeUnload);
+      window.removeEventListener('pagehide', persist);
+      globalThis.document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [state.persistenceBlocked, state.workspace]);
 
   useEffect(() => {
@@ -226,15 +247,15 @@ export function EditorApp() {
       try {
         const externalWorkspace = parseStoredWorkspace(event.newValue);
         if (JSON.stringify(externalWorkspace) === JSON.stringify(state.workspace)) {
-          persistedRevisionRef.current = externalWorkspace.revision;
+          persistedWorkspaceRef.current = externalWorkspace;
           return;
         }
-        const hasLocalChanges = state.workspace.revision !== persistedRevisionRef.current;
+        const hasLocalChanges = state.workspace.revision !== persistedWorkspaceRef.current.revision;
         if (hasLocalChanges || externalWorkspace.revision <= state.workspace.revision) {
           setSaveState('conflict');
           return;
         }
-        persistedRevisionRef.current = externalWorkspace.revision;
+        persistedWorkspaceRef.current = externalWorkspace;
         setSaveState('saved');
         dispatch({ type: 'external-workspace', workspace: externalWorkspace });
       } catch {
@@ -447,6 +468,12 @@ export function EditorApp() {
   async function importBackup(value: string): Promise<{ success: boolean; message: string }> {
     try {
       const workspace = parseWorkspaceBackup(value);
+      // Keep the confirmation tied to the snapshot the user saw, not a later remote update.
+      const baseline = workspaceRef.current;
+      if (!state.persistenceBlocked) {
+        saveWorkspace(baseline, persistedWorkspaceRef.current);
+        persistedWorkspaceRef.current = baseline;
+      }
       const accepted = await requestConfirmation({
         kicker: '导入本地备份',
         marker: '入',
@@ -456,8 +483,8 @@ export function EditorApp() {
         tone: 'default',
       });
       if (!accepted) return { success: false, message: '已取消导入' };
-      const replacement = replaceWorkspace(workspace, state.workspace.revision);
-      persistedRevisionRef.current = replacement.revision;
+      const replacement = replaceWorkspace(workspace, baseline);
+      persistedWorkspaceRef.current = replacement;
       setOrganizeUndo(null);
       dispatch({ type: 'workspace', workspace: replacement, unblockPersistence: true });
       return { success: true, message: `已导入 ${replacement.notes.length} 条笔记` };

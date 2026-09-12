@@ -4,6 +4,15 @@ import { XHS_CHARACTER_LIMIT, renderXiaohongshu } from './render-xhs';
 import { getTheme, xhsThemes } from './themes';
 
 describe('renderXiaohongshu', () => {
+  it.each(xhsThemes.map((theme) => theme.id))(
+    'preserves bracket-adjacent newlines when copying body with %s', (themeId) => {
+      const result = renderXiaohongshu(parseDocument('【标题】\n正文第一行\n正文第二行'), getTheme(themeId));
+      expect(result.plainText).toBe('【标题】\n正文第一行\n正文第二行');
+      expect(result.sections.body).toBe('正文第一行\n正文第二行');
+      const bracketedBody = renderXiaohongshu(parseDocument('标题\n【重点】第一行\n下一行'), getTheme(themeId));
+      expect(bracketedBody.sections.body).toBe('【重点】第一行\n下一行');
+    },
+  );
   it('renders headings, lists, quotes, emphasis and topics as plain text', () => {
     const document = parseDocument(`# 安装方法
 

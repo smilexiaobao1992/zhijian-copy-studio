@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { MAX_BACKUP_SIZE_BYTES, getNoteDisplayTitle, type NoteSnapshot } from './storage';
+import { BACKUP_SIZE_ERROR, MAX_BACKUP_SIZE_BYTES, getNoteDisplayTitle, type NoteSnapshot } from './storage';
 import styles from './EditorApp.module.css';
 
 interface NoteDrawerProps {
@@ -69,7 +69,7 @@ export function NoteDrawer({
   async function importFile(file: File | undefined) {
     if (!file) return;
     if (file.size > MAX_BACKUP_SIZE_BYTES) {
-      setBackupMessage('备份文件不能超过 5 MB');
+      setBackupMessage(BACKUP_SIZE_ERROR);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -167,8 +167,12 @@ export function NoteDrawer({
         </div>
         <div className={styles.backupActions}>
           <button type="button" onClick={() => {
-            onExport();
-            setBackupMessage('备份已导出');
+            try {
+              onExport();
+              setBackupMessage('备份已导出');
+            } catch (error) {
+              setBackupMessage(error instanceof Error ? error.message : '备份导出失败');
+            }
           }}>导出</button>
           <button type="button" onClick={() => fileInputRef.current?.click()}>导入</button>
           <input

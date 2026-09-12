@@ -136,8 +136,8 @@ function orderedMarker(theme: XhsTheme, value: number): string {
 
 function renderParagraph(node: Paragraph, theme: XhsTheme, context: RenderContext): string {
   return renderPhrasing(node.children, theme, context)
-    .replace(/\s+([「【﹝〈〔（])/gu, '$1')
-    .replace(/([」】﹞〉〕）])\s+/gu, '$1')
+    .replace(/[^\S\r\n]+([「【﹝〈〔（])/gu, '$1')
+    .replace(/([」】﹞〉〕）])[^\S\r\n]+/gu, '$1')
     .trim();
 }
 

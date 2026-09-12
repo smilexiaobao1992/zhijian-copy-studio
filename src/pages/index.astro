@@ -442,16 +442,24 @@ const applicationSchema = {
 
     const revealItems = document.querySelectorAll('[data-reveal]');
     if ('IntersectionObserver' in window && !reduceMotion) {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('revealed');
-            observer.unobserve(entry.target);
-          }
+      try {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.remove('reveal-pending');
+              entry.target.classList.add('revealed');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px' });
+        revealItems.forEach((item) => {
+          observer.observe(item);
+          item.classList.add('reveal-pending');
         });
-      }, { threshold: 0.12, rootMargin: '0px 0px -40px' });
-      revealItems.forEach((item) => observer.observe(item));
-    } else revealItems.forEach((item) => item.classList.add('revealed'));
+      } catch {
+        revealItems.forEach((item) => item.classList.remove('reveal-pending'));
+      }
+    }
 
     document.addEventListener('astro:before-preparation', () => window.clearTimeout(typingTimer));
   </script>

@@ -10,7 +10,8 @@ import {
 
 export const LEGACY_DRAFT_STORAGE_KEY = 'social-copy-studio:draft:v1';
 export const WORKSPACE_STORAGE_KEY = 'social-copy-studio:workspace:v2';
-export const MAX_BACKUP_SIZE_BYTES = 5_000_000;
+export const MAX_BACKUP_SIZE_BYTES = 20_000_000;
+export const BACKUP_SIZE_ERROR = '备份文件不能超过 20 MB';
 const MAX_NOTES = 500;
 const MAX_DATE_TIMESTAMP = 8_640_000_000_000_000;
 
@@ -192,30 +193,30 @@ function isSameWorkspace(left: WorkspaceSnapshot, right: WorkspaceSnapshot): boo
 
 export function saveWorkspace(
   workspace: WorkspaceSnapshot,
+  baseline: WorkspaceSnapshot,
   storage: StorageAdapter = window.localStorage,
 ): void {
   const result = workspaceSnapshotSchema.parse(workspace);
   const storedValue = storage.getItem(WORKSPACE_STORAGE_KEY);
   if (storedValue !== null) {
     const storedWorkspace = parseStoredWorkspace(storedValue);
-    const isStale = storedWorkspace.revision > result.revision;
-    const isConflictingRevision = storedWorkspace.revision === result.revision
-      && !isSameWorkspace(storedWorkspace, result);
-    if (isStale || isConflictingRevision) throw new WorkspaceConflictError();
+    if (isSameWorkspace(storedWorkspace, result)) return;
+    // Local edit counts are not a shared version: a stale tab can make more edits.
+    if (!isSameWorkspace(storedWorkspace, baseline)) throw new WorkspaceConflictError();
   }
   storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(result));
 }
 
 export function replaceWorkspace(
   workspace: WorkspaceSnapshot,
-  currentRevision: number,
+  baseline: WorkspaceSnapshot,
   storage: StorageAdapter = window.localStorage,
 ): WorkspaceSnapshot {
   const storedValue = storage.getItem(WORKSPACE_STORAGE_KEY);
   if (storedValue !== null) {
     try {
       const storedWorkspace = parseStoredWorkspace(storedValue);
-      if (storedWorkspace.revision !== currentRevision) throw new WorkspaceConflictError();
+      if (!isSameWorkspace(storedWorkspace, baseline)) throw new WorkspaceConflictError();
     } catch (error) {
       // A confirmed backup import may replace an unreadable snapshot, but never a newer valid one.
       if (error instanceof WorkspaceConflictError) throw error;
@@ -223,7 +224,7 @@ export function replaceWorkspace(
   }
   const replacement = workspaceSnapshotSchema.parse({
     ...workspace,
-    revision: Math.max(workspace.revision, currentRevision) + 1,
+    revision: Math.max(workspace.revision, baseline.revision) + 1,
   });
   storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(replacement));
   return replacement;
@@ -338,16 +339,24 @@ export function serializeWorkspaceBackup(
   exportedAt = new Date().toISOString(),
 ): string {
   const validated = workspaceSnapshotSchema.parse(workspace);
-  return JSON.stringify({
+  const value = JSON.stringify({
     app: 'zhijian-copy-studio',
     backupVersion: 1,
     exportedAt,
     workspace: validated,
   }, null, 2);
+  assertBackupSize(value);
+  return value;
+}
+
+function assertBackupSize(value: string): void {
+  if (new TextEncoder().encode(value).byteLength > MAX_BACKUP_SIZE_BYTES) {
+    throw new Error(BACKUP_SIZE_ERROR);
+  }
 }
 
 export function parseWorkspaceBackup(value: string): WorkspaceSnapshot {
-  if (value.length > MAX_BACKUP_SIZE_BYTES) throw new Error('备份文件不能超过 5 MB');
+  assertBackupSize(value);
   try {
     return workspaceBackupSchema.parse(JSON.parse(value)).workspace;
   } catch {

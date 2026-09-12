@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultWechatStyleConfig } from '../../core/wechat-style';
 import {
   LEGACY_DRAFT_STORAGE_KEY,
+  MAX_BACKUP_SIZE_BYTES,
   WORKSPACE_STORAGE_KEY,
   addNote,
   createDefaultWorkspace,
@@ -123,7 +124,7 @@ describe('multi-note workspace storage', () => {
   it('persists V2 and round-trips a validated JSON backup', () => {
     const storage = new MemoryStorage();
     const workspace = addNote(createDefaultWorkspace(100, 'first'), 110, 'second');
-    saveWorkspace(workspace, storage);
+    saveWorkspace(workspace, workspace, storage);
 
     expect(loadWorkspace(storage)).toEqual(workspace);
     const backup = serializeWorkspaceBackup(workspace, '2026-08-25T00:00:00.000Z');
@@ -133,13 +134,14 @@ describe('multi-note workspace storage', () => {
   it('rejects a stale whole-workspace save from another tab', () => {
     const storage = new MemoryStorage();
     const base = createDefaultWorkspace(100, 'first');
-    saveWorkspace(base, storage);
+    saveWorkspace(base, base, storage);
     const tabA = loadWorkspace(storage);
     const tabB = loadWorkspace(storage);
 
-    saveWorkspace(updateActiveNote(tabA, { source: '# 标签页 A' }, 110), storage);
+    saveWorkspace(updateActiveNote(tabA, { source: '# 标签页 A' }, 110), tabA, storage);
     expect(() => saveWorkspace(
       updateActiveNote(tabB, { source: '# 标签页 B' }, 120),
+      tabB,
       storage,
     )).toThrow(WorkspaceConflictError);
     expect(getActiveNote(loadWorkspace(storage)).source).toBe('# 标签页 A');
@@ -149,12 +151,16 @@ describe('multi-note workspace storage', () => {
     const storage = new MemoryStorage();
     storage.setItem(WORKSPACE_STORAGE_KEY, '{broken');
     const imported = createDefaultWorkspace(100, 'imported');
-    const replacement = replaceWorkspace(imported, 0, storage);
+    const replacement = replaceWorkspace(imported, imported, storage);
     expect(loadWorkspace(storage)).toEqual(replacement);
 
     const newer = updateActiveNote(replacement, { source: '# 新版本' }, 110);
-    saveWorkspace(newer, storage);
-    expect(() => replaceWorkspace(imported, replacement.revision, storage)).toThrow(WorkspaceConflictError);
+    saveWorkspace(newer, replacement, storage);
+    expect(() => replaceWorkspace(imported, replacement, storage)).toThrow(WorkspaceConflictError);
+
+    const equalRevisionButDifferentContent = { ...replacement, notes: newer.notes };
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(equalRevisionButDifferentContent));
+    expect(() => replaceWorkspace(imported, replacement, storage)).toThrow(WorkspaceConflictError);
   });
 
   it('rejects unrelated or structurally invalid backup files', () => {
@@ -172,5 +178,31 @@ describe('multi-note workspace storage', () => {
     };
     invalidDate.workspace.notes[0]!.updatedAt = 8_640_000_000_000_001;
     expect(() => parseWorkspaceBackup(JSON.stringify(invalidDate))).toThrow('有效的纸间排版备份');
+  });
+
+  it('rejects stale edits even when their local revision exceeds the saved revision', () => {
+    const storage = new MemoryStorage();
+    const base = createDefaultWorkspace(100, 'first');
+    saveWorkspace(base, base, storage);
+    const winner = updateActiveNote(base, { source: '赢家稿件' }, 110);
+    saveWorkspace(winner, base, storage);
+    const stale = updateActiveNote(updateActiveNote(base, { source: '另一页' }, 120), { source: '再输入' }, 130);
+    expect(stale.revision).toBeGreaterThan(winner.revision);
+    expect(() => saveWorkspace(stale, base, storage)).toThrow(WorkspaceConflictError);
+    expect(loadWorkspace(storage)).toEqual(winner);
+    const next = updateActiveNote(winner, { source: '正常续写' }, 140);
+    saveWorkspace(next, winner, storage);
+    saveWorkspace(next, winner, storage); // repeated lifecycle flush is idempotent
+    expect(loadWorkspace(storage)).toEqual(next);
+  });
+
+  it('uses the same UTF-8 byte limit for both backup directions', () => {
+    const workspace = updateActiveNote(createDefaultWorkspace(100, 'first'), { source: '中'.repeat(1_800_000) });
+    const backup = serializeWorkspaceBackup(workspace);
+    expect(new TextEncoder().encode(backup).byteLength).toBeGreaterThan(5_000_000);
+    expect(parseWorkspaceBackup(backup)).toEqual(workspace);
+    const oversized = '中'.repeat(Math.ceil(MAX_BACKUP_SIZE_BYTES / 3));
+    expect(() => serializeWorkspaceBackup(updateActiveNote(workspace, { source: oversized }))).toThrow('20 MB');
+    expect(() => parseWorkspaceBackup(oversized)).toThrow('20 MB');
   });
 });

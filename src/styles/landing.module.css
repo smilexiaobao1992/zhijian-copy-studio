@@ -329,8 +329,6 @@
 .liveDemoWrap {
   position: relative;
   min-width: 0;
-  opacity: 0;
-  transform: translateY(32px) rotate(1deg);
 }
 
 .backSheet {
@@ -604,8 +602,6 @@
   overflow: hidden;
   padding: 29px 32px 32px;
   background: #fffdf7;
-  opacity: 0;
-  transform: translateY(24px);
   transition: background-color 320ms ease, transform 500ms cubic-bezier(0.22, 1, 0.36, 1), opacity 500ms ease;
 }
 
@@ -735,8 +731,6 @@
   border: 1px solid rgb(245 239 227 / 0.1);
   border-radius: 8px;
   background: rgb(245 239 227 / 0.04);
-  opacity: 0;
-  transform: translateY(24px);
   transition: background-color 300ms ease, opacity 500ms ease, transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -985,8 +979,6 @@
 .themePreviewWrap {
   position: sticky;
   top: 92px;
-  opacity: 0;
-  transform: translateY(24px);
 }
 
 .themePreviewBack {
@@ -1142,8 +1134,6 @@
   border-radius: 8px;
   background: #fffdf7;
   text-align: center;
-  opacity: 0;
-  transform: translateY(24px);
 }
 
 .closingPanel > i {
@@ -1246,6 +1236,11 @@
   color: #8b8377;
   font-family: var(--font-mono);
   font-size: 9px;
+}
+
+[data-reveal]:global(.reveal-pending) {
+  opacity: 0;
+  transform: translateY(24px);
 }
 
 [data-reveal]:global(.revealed),
@@ -1567,6 +1562,7 @@
   }
 
   [data-reveal],
+  [data-reveal]:global(.reveal-pending),
   .principleGrid article,
   .channelGrid > article,
   .closingPanel {
