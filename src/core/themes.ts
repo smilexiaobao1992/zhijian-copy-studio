@@ -50,7 +50,7 @@ const themeDefinitions = [
       unorderedBullet: '·',
       orderedStyle: 'circled',
       quotePrefix: '纸间记｜',
-      divider: '𓂃 𓈒𓏸',
+      divider: '· ✧ · ✧ ·',
       strongOpen: '﹝',
       strongClose: '﹞',
       emphasisOpen: '（',
