@@ -85,6 +85,14 @@ function escapeHtml(value: string): string {
     .replace(/'/gu, '&#39;');
 }
 
+// Blends a validated #rrggbb color toward white so tinted blocks stay plain hex for WeChat.
+function tintColor(hex: string, ratio: number): string {
+  const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+  return `#${channels
+    .map((channel) => Math.round(255 - (255 - channel) * ratio).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
 function renderMarkedText(value: string, accentColor: string): string {
   const pattern = /==([^=\n]+)==/gu;
   let output = '';
@@ -302,6 +310,16 @@ function renderHeading(
     case 'minimal':
       return `<section style="margin:${margin};">
         <p style="margin:0 0 8px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:11px;font-weight:700;letter-spacing:0.16em;line-height:1.4;">● ${String(context.headingIndex).padStart(2, '0')}</p>
+        ${heading}
+      </section>`;
+    case 'card':
+      return `<section style="margin:${margin};padding:14px 16px 16px;border-top:3px solid ${theme.palette.accent};background-color:${tintColor(theme.palette.accent, 0.07)};">
+        <p style="margin:0 0 6px;color:${theme.palette.accent};font-family:${context.style.bodyFont};font-size:11px;font-weight:700;letter-spacing:0.14em;line-height:1.4;">${escapeHtml(label)} / ${index}</p>
+        ${heading}
+      </section>`;
+    case 'numeral':
+      return `<section style="margin:${margin};padding-bottom:14px;border-bottom:1px solid ${theme.palette.line};">
+        <p style="margin:0 0 6px;color:${theme.palette.accent};font-family:${context.style.headingFont};font-size:40px;font-weight:700;line-height:1;letter-spacing:-0.02em;">${index}</p>
         ${heading}
       </section>`;
     case 'editorial':

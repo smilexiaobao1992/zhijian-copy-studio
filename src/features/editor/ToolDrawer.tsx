@@ -243,6 +243,8 @@ function WechatStyleWorkshop({ config, onApplyPreset, onUpdate }: WechatStyleWor
             ['side', '侧标'],
             ['underline', '通栏'],
             ['minimal', '留白'],
+            ['card', '卡片'],
+            ['numeral', '序号'],
           ] as const).map(([value, label]) => (
             <button
               type="button"

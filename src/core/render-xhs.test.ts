@@ -191,9 +191,51 @@ npm run build
     const result = renderXiaohongshu(document, getTheme('clear-note'));
 
     expect(result.sections.title).toBe('主标题');
-    expect(result.plainText.indexOf('01｜主标题')).toBeLessThan(result.plainText.indexOf('［note］ 前置脚注。'));
+    expect(result.plainText.indexOf('主标题')).toBeLessThan(result.plainText.indexOf('［note］ 前置脚注。'));
     expect(result.stats.headings).toBe(1);
     expect(result.stats.paragraphs).toBe(1);
+  });
+
+  it('keeps the note title out of the section numbering', () => {
+    const document = parseDocument('# 主标题\n\n导语。\n\n## 第一节\n\n## 第二节');
+    const numbered = renderXiaohongshu(document, getTheme('clear-note'));
+    expect(numbered.plainText.startsWith('主标题\n')).toBe(true);
+    expect(numbered.sections.body).toContain('01｜第一节');
+    expect(numbered.sections.body).toContain('02｜第二节');
+    expect(numbered.stats.headings).toBe(3);
+
+    const labelled = renderXiaohongshu(document, getTheme('guided-steps'));
+    expect(labelled.plainText.startsWith('主标题\n')).toBe(true);
+    expect(labelled.plainText).toContain('步骤01｜第一节');
+
+    const symbol = renderXiaohongshu(document, getTheme('signal-tech'));
+    expect(symbol.plainText.startsWith('▌ 主标题\n')).toBe(true);
+  });
+
+  it('tightens spaces around theme-specific emphasis markers', () => {
+    const document = parseDocument('这是 **重点** 的一步，还有 *补充* 说明。');
+    expect(renderXiaohongshu(document, getTheme('brief-report')).plainText).toBe('这是『重点』的一步，还有〈补充〉说明。');
+    expect(renderXiaohongshu(document, getTheme('quiet-prose')).plainText).toBe('这是〖重点〗的一步，还有「补充」说明。');
+    expect(renderXiaohongshu(document, getTheme('emoji-pop')).plainText).toBe('这是✨重点✨的一步，还有「补充」说明。');
+  });
+
+  it('gives every bundled theme a distinct output for the same copy', () => {
+    const document = parseDocument(`# 标题
+
+## 小节
+
+**重点** 与 *补充*
+
+- 条目
+1. 步骤
+
+> 引用
+
+---
+
+\`code\``);
+    const outputs = xhsThemes.map((theme) => renderXiaohongshu(document, theme).plainText);
+    expect(new Set(outputs).size).toBe(xhsThemes.length);
   });
 
   it('outputs only referenced footnotes in first-reference order', () => {

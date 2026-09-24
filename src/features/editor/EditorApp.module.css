@@ -1123,6 +1123,30 @@
   background: #302a26;
 }
 
+.presetSample[data-preset="tech"] i:first-child {
+  width: 100%;
+  background: #185687;
+}
+
+.presetSample[data-preset="magazine"] i:first-child {
+  width: 40%;
+  height: 12px;
+  background: #363636;
+}
+
+.presetSample[data-preset="forest"] i:first-child {
+  width: 100%;
+  height: 8px;
+  border-top: 2px solid #5d7039;
+  background: #eef1e8;
+}
+
+.presetSample[data-preset="lavender"] i:first-child {
+  width: 18%;
+  height: 4px;
+  background: #8d5c7d;
+}
+
 .segmentedControls,
 .compoundControls,
 .headingStyleGrid {
@@ -1232,7 +1256,7 @@
 }
 
 .headingStyleGrid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .headingStyleGrid button {
@@ -1285,6 +1309,18 @@
 
 .headingStyleGrid span[data-style="minimal"] i:last-child {
   display: none;
+}
+
+.headingStyleGrid span[data-style="card"] {
+  padding: 4px;
+  border-top: 2px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.headingStyleGrid span[data-style="numeral"] i:first-child {
+  width: 40%;
+  height: 7px;
+  background: var(--color-accent);
 }
 
 .confirmDialog {

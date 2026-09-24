@@ -7,14 +7,14 @@ export const wechatStyleConfigSchema = z.object({
   bodySize: z.union([z.literal(15), z.literal(16), z.literal(17), z.literal(18)]),
   lineHeight: z.union([z.literal(1.75), z.literal(1.9), z.literal(2.05)]),
   accentColor: hexColorSchema,
-  headingStyle: z.enum(['editorial', 'band', 'side', 'underline', 'minimal']),
+  headingStyle: z.enum(['editorial', 'band', 'side', 'underline', 'minimal', 'card', 'numeral']),
   codeTheme: z.enum(['ink', 'paper']),
 }).strict();
 
 export type WechatStyleConfig = z.infer<typeof wechatStyleConfigSchema>;
 
 export interface WechatStylePreset {
-  id: 'oriental' | 'classic' | 'elegant' | 'clean';
+  id: 'oriental' | 'classic' | 'elegant' | 'clean' | 'tech' | 'magazine' | 'forest' | 'lavender';
   name: string;
   description: string;
   config: WechatStyleConfig;
@@ -73,6 +73,58 @@ export const wechatStylePresets: readonly WechatStylePreset[] = [
       codeTheme: 'paper',
     },
   },
+  {
+    id: 'tech',
+    name: '技术蓝调',
+    description: '蓝色章签，深色代码块',
+    config: {
+      fontFamily: 'sans',
+      bodySize: 15,
+      lineHeight: 1.75,
+      accentColor: '#185687',
+      headingStyle: 'band',
+      codeTheme: 'ink',
+    },
+  },
+  {
+    id: 'magazine',
+    name: '黑白杂志',
+    description: '衬线大序号，适合评论专栏',
+    config: {
+      fontFamily: 'serif',
+      bodySize: 16,
+      lineHeight: 1.9,
+      accentColor: '#363636',
+      headingStyle: 'numeral',
+      codeTheme: 'paper',
+    },
+  },
+  {
+    id: 'forest',
+    name: '森林笔记',
+    description: '橄榄绿卡片标题，适合生活分享',
+    config: {
+      fontFamily: 'sans',
+      bodySize: 16,
+      lineHeight: 1.9,
+      accentColor: '#5d7039',
+      headingStyle: 'card',
+      codeTheme: 'paper',
+    },
+  },
+  {
+    id: 'lavender',
+    name: '薰衣草信笺',
+    description: '衬线留白，适合情感与读书',
+    config: {
+      fontFamily: 'serif',
+      bodySize: 17,
+      lineHeight: 2.05,
+      accentColor: '#8d5c7d',
+      headingStyle: 'minimal',
+      codeTheme: 'paper',
+    },
+  },
 ] as const;
 
 export const defaultWechatStyleConfig: WechatStyleConfig = wechatStylePresets[0]!.config;
@@ -82,7 +134,7 @@ export const wechatAccentColors = [
   { name: '朱砂红', value: '#b44735' },
   { name: '经典蓝', value: '#185687' },
   { name: '翡翠绿', value: '#16836f' },
-  { name: '柠檬黄', value: '#d59a18' },
+  { name: '琥珀黄', value: '#9a6a0f' },
   { name: '薰衣紫', value: '#8d5c7d' },
   { name: '玫瑰金', value: '#a35f6f' },
   { name: '橄榄绿', value: '#5d7039' },

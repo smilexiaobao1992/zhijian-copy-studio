@@ -134,10 +134,21 @@ function orderedMarker(theme: XhsTheme, value: number): string {
   }
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+}
+
+function markerAlternation(builtIn: string, themeMarkers: readonly string[]): string {
+  return [`[${builtIn}]`, ...themeMarkers.filter(Boolean).map(escapeRegExp)].join('|');
+}
+
 function renderParagraph(node: Paragraph, theme: XhsTheme, context: RenderContext): string {
+  const { rules } = theme;
+  const opening = markerAlternation('「【﹝〈〔（', [rules.strongOpen, rules.emphasisOpen]);
+  const closing = markerAlternation('」】﹞〉〕）', [rules.strongClose, rules.emphasisClose]);
   return renderPhrasing(node.children, theme, context)
-    .replace(/[^\S\r\n]+([「【﹝〈〔（])/gu, '$1')
-    .replace(/([」】﹞〉〕）])[^\S\r\n]+/gu, '$1')
+    .replace(new RegExp(`[^\\S\\r\\n]+(${opening})`, 'gu'), '$1')
+    .replace(new RegExp(`(${closing})[^\\S\\r\\n]+`, 'gu'), '$1')
     .trim();
 }
 
@@ -213,6 +224,18 @@ function renderBlock(node: RootContent, theme: XhsTheme, context: RenderContext)
     default:
       return '';
   }
+}
+
+function renderTitleHeading(
+  node: Extract<RootContent, { type: 'heading' }>,
+  theme: XhsTheme,
+  context: RenderContext,
+): string {
+  // The note title stays outside the section sequence so body headings start at 01.
+  context.headings += 1;
+  const title = renderPhrasing(node.children, theme, context).trim();
+  const { heading } = theme.rules;
+  return heading.style === 'symbol' ? `${heading.symbol} ${title}` : title;
 }
 
 function renderFootnote(
@@ -298,9 +321,15 @@ export function renderXiaohongshu(
     definitions: references.definitions,
   };
 
-  const renderedBlocks = document.ast.children
-    .filter((node) => node.type !== 'definition' && node.type !== 'footnoteDefinition')
-    .map((node) => ({ node, text: renderBlock(node, theme, context) }))
+  const contentNodes = document.ast.children
+    .filter((node) => node.type !== 'definition' && node.type !== 'footnoteDefinition');
+  const leadingNode = contentNodes.find((node) => node.type !== 'html');
+  const titleHeading = leadingNode?.type === 'heading' ? leadingNode : null;
+  const renderedBlocks = contentNodes
+    .map((node) => ({
+      node,
+      text: node === titleHeading ? renderTitleHeading(titleHeading, theme, context) : renderBlock(node, theme, context),
+    }))
     .filter((block) => Boolean(block.text));
   const footnoteBlocks = references.footnotes
     .map((footnote) => renderFootnote(footnote, theme, footnoteContext))

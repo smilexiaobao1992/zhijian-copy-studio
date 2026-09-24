@@ -4,7 +4,7 @@ import styles from '../styles/landing.module.css';
 
 const features = [
   'Markdown 输入',
-  '四套小红书主题',
+  '八套小红书主题',
   '公众号安全富文本',
   '实时预览',
   '一键复制',
@@ -25,8 +25,8 @@ const themes = [
     bg: '#ffffff',
     fg: '#1b1915',
     soft: '#f1efe9',
-    prefix: '▎',
-    section: '§',
+    prefix: '',
+    section: '01｜',
     list: ['①', '②', '③'],
     channel: 'XIAOHONGSHU · TEXT',
   },
@@ -53,9 +53,9 @@ const themes = [
     bg: '#f7f1e5',
     fg: '#2b2620',
     soft: '#ede4d2',
-    prefix: '◆',
-    section: '◆',
-    list: ['一', '二', '三'],
+    prefix: '✦',
+    section: '✦',
+    list: ['①', '②', '③'],
     channel: 'XIAOHONGSHU · TEXT',
   },
   {
@@ -67,9 +67,9 @@ const themes = [
     bg: '#f1faf5',
     fg: '#0f2a1f',
     soft: '#d9f0e4',
-    prefix: 'STEP',
-    section: 'STEP',
-    list: ['01', '02', '03'],
+    prefix: '',
+    section: '步骤01｜',
+    list: ['1️⃣', '2️⃣', '3️⃣'],
     channel: 'XIAOHONGSHU · TEXT',
   },
   {
@@ -82,8 +82,8 @@ const themes = [
     fg: '#1d1a16',
     soft: '#f0e9dc',
     prefix: '',
-    section: '章节',
-    list: ['1.', '2.', '3.'],
+    section: '章节 / 01',
+    list: ['01', '02', '03'],
     channel: 'WECHAT · RICH TEXT',
   },
 ];
@@ -105,7 +105,7 @@ const applicationSchema = {
     'Markdown 文案解析',
     '小红书纯文本排版',
     '微信公众号富文本排版',
-    '五套结构化主题',
+    '八套小红书主题与八种公众号版式',
     '本地图片粘贴与富文本复制',
     '本地草稿保存',
     '实时左右对照预览',
@@ -238,7 +238,7 @@ const applicationSchema = {
           <article data-reveal>
             <header><span class={styles.statusPink}><i></i>现在可用</span><b>TEXT · SYMBOLS</b></header>
             <h3>小红书</h3>
-            <p>四套主题、三个内容模板、实时预览、一键复制。符号层级在任何端都能稳定显示。</p>
+            <p>八套主题、三个内容模板、实时预览、一键复制。符号层级在任何端都能稳定显示。</p>
             <ul><li>标题前缀与步骤编号</li><li>重点句用括注与符号强调</li><li>自动整理空行与段落密度</li></ul>
             <div class={styles.phone} aria-hidden="true">
               <i></i><div><strong>▌ AI 文案读起来太挤怎么办</strong><p>直接复制 AI 输出，经常会遇到【段落太密、重点不清】的问题。</p><b>▌ 先做三件事</b><p>❶ 一段只讲一个观点<br />❷ 把操作步骤改成列表<br />❸ 给关键句加一个重点</p><em>#排版 #写作 #AI工具</em></div>
@@ -247,7 +247,7 @@ const applicationSchema = {
           <article data-reveal>
             <header><span class={styles.statusGreen}><i></i>现在可用</span><b>RICH TEXT · INLINE CSS</b></header>
             <h3>公众号</h3>
-            <p>经典手记主题、安全内联样式、实时预览与富文本复制。图片也会随正文一起复制。</p>
+            <p>八种版式气质、安全内联样式、实时预览与富文本复制。图片也会随正文一起复制。</p>
             <ul><li>字号、颜色、间距全部内联</li><li>本地图片直接粘贴到正文</li><li>引用、分隔线与小标题成套设计</li></ul>
             <div class={`${styles.phone} ${styles.wechatPhone}`} aria-hidden="true">
               <i></i><div><strong>AI 文案读起来太挤怎么办</strong><p>直接复制 AI 输出，经常会遇到<span>段落太密、重点不清</span>的问题。</p><b>先做三件事</b><p>1. 一段只讲一个观点<br />2. 把操作步骤改成列表</p><blockquote>排版不是装饰，是替读者省力。</blockquote></div>
@@ -260,7 +260,7 @@ const applicationSchema = {
     <section class={styles.themes} id="themes" aria-labelledby="themes-heading">
       <div class={styles.sectionInner}>
         <p class={styles.eyebrow}><span>03</span><i></i>主题</p>
-        <h2 id="themes-heading">四种文案性格，<span>一份刊物气质</span>。</h2>
+        <h2 id="themes-heading">每种文案性格，<span>都有一份刊物气质</span>。</h2>
         <div class={styles.themeLayout}>
           <div>
             <div class={styles.themeList} role="tablist" aria-label="排版主题">

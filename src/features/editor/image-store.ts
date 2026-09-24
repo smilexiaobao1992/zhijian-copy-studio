@@ -76,7 +76,8 @@ function validateImage(file: File): void {
 
 export async function storeLocalImage(file: File): Promise<LocalImageAsset> {
   validateImage(file);
-  const [database, dataUrl] = await Promise.all([openDatabase(), readFileAsDataUrl(file)]);
+  const dataUrl = await readFileAsDataUrl(file);
+  const database = await openDatabase();
   const id = createImageId();
   const record: StoredImage = {
     id,

@@ -110,6 +110,32 @@ npm run build
     expect(result.html).toContain('background-color:#f7f7f5;color:#2d2723');
   });
 
+  it('renders card and numeral heading styles with escaped titles', () => {
+    const document = parseDocument('## <b>小标题</b> & "引号"\n\n一段正文。');
+    const forest = wechatStylePresets.find((preset) => preset.id === 'forest')!;
+    const card = renderWechat(document, getWechatTheme('editorial-notes'), forest.config);
+
+    expect(card.html).toContain('data-zhijian-heading="card"');
+    expect(card.html).toContain('border-top:3px solid #5d7039;background-color:#f4f5f1;');
+    expect(card.html).toContain('章节 / 01');
+    expect(card.html).toContain('&amp; &quot;引号&quot;');
+    expect(card.html).not.toContain('<b>');
+
+    const magazine = wechatStylePresets.find((preset) => preset.id === 'magazine')!;
+    const numeral = renderWechat(document, getWechatTheme('editorial-notes'), magazine.config);
+
+    expect(numeral.html).toContain('data-zhijian-heading="numeral"');
+    expect(numeral.html).toContain('font-size:40px;font-weight:700;line-height:1;letter-spacing:-0.02em;">01</p>');
+    expect(numeral.html).not.toContain('<b>');
+  });
+
+  it('keeps every bundled preset valid and readable on white paper', () => {
+    for (const preset of wechatStylePresets) {
+      expect(() => renderWechat(parseDocument('## 标题\n\n**重点**'), getWechatTheme('editorial-notes'), preset.config)).not.toThrow();
+    }
+    expect(new Set(wechatStylePresets.map((preset) => preset.id)).size).toBe(wechatStylePresets.length);
+  });
+
   it('renders a centered chapter band as a selectable heading style', () => {
     const document = parseDocument('## 小标题\n\n一段正文。');
     const classic = wechatStylePresets.find((preset) => preset.id === 'classic')!;

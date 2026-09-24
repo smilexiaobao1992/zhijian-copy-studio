@@ -1044,6 +1044,10 @@
   font-style: normal;
 }
 
+.themeSample h3 > i:empty {
+  display: none;
+}
+
 .themeSample p {
   margin: 11px 0 0;
 }
